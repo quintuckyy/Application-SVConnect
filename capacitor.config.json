@@ -1,0 +1,10 @@
+{
+  "appId": "com.example.myapp",
+  "appName": "SVConnect",
+  "webDir": "www",
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    }
+  }
+}

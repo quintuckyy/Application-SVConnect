@@ -1,0 +1,35 @@
+node_modules/
+
+# Secrets / credentials
+keystore/
+*.jks
+*.keystore
+.env
+.env.*
+android/app/google-services.json
+GoogleService-Info.plist
+*serviceAccountKey.json
+*service-account*.json
+
+# Android local machine config
+android/local.properties
+
+# Android build artifacts (should not be committed)
+android/app/release/
+*.apk
+*.aab
+
+# Logs
+*.log
+npm-debug.log*
+
+# Backups / data dumps (never commit real member/production data)
+*.bak
+*.orig
+*.sql
+*.sqlite
+*.csv
+
+# OS files
+.DS_Store
+Thumbs.db
