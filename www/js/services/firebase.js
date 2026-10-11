@@ -3,12 +3,13 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, se
 import { getFirestore, doc, collection, query, where, addDoc, getDocs, getDoc, setDoc, updateDoc, deleteField, orderBy } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAUSaSpGLkMddALk3aaTi9ex3A3xAXjQJQ",
-  authDomain: "st-vincent-coop-connect-aaed7.firebaseapp.com",
-  projectId: "st-vincent-coop-connect-aaed7",
-  storageBucket: "st-vincent-coop-connect-aaed7.firebasestorage.app",
-  messagingSenderId: "548947783035",
-  appId: "1:548947783035:web:5b9c85e041749e926021de"
+  apiKey: "AIzaSyCSezEazACkGVI-TImbWNfnvfZHvetQlR8",
+  authDomain: "st-vincent-coop-connect.firebaseapp.com",
+  databaseURL: "https://st-vincent-coop-connect-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "st-vincent-coop-connect",
+  storageBucket: "st-vincent-coop-connect.firebasestorage.app",
+  messagingSenderId: "1050498334476",
+  appId: "1:1050498334476:web:2e1d39eb4b4d8633fd9329"
 };
 
 const app = initializeApp(firebaseConfig);

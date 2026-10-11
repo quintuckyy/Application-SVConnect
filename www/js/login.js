@@ -1,19 +1,7 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, getDocs, setDoc, collection, addDoc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { auth, db } from "./services/firebase.js";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import { doc, getDoc, getDocs, setDoc, collection, addDoc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAUSaSpGLkMddALk3aaTi9ex3A3xAXjQJQ",
-  authDomain: "st-vincent-coop-connect-aaed7.firebaseapp.com",
-  projectId: "st-vincent-coop-connect-aaed7",
-  storageBucket: "st-vincent-coop-connect-aaed7.firebasestorage.app",
-  messagingSenderId: "548947783035",
-  appId: "1:548947783035:web:5b9c85e041749e926021de"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
 const signUp = document.getElementById("step2");
 const registerUser = document.getElementById("registerBtn");
 const loginUser = document.getElementById("loginForm");
