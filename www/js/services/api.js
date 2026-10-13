@@ -15,7 +15,6 @@ import {
   query,
   setDoc,
   updateDoc,
-  where,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { auth, db, functions, useCloudFunctions } from "./firebase.js";
@@ -49,7 +48,14 @@ const longDate = (d) => d.toLocaleDateString("en-US", { year: "numeric", month: 
 export async function checkMemberId(memberId) {
   if (useCloudFunctions) return (await callFunction("checkMemberId", { memberId })).status;
 
-  const snap = await getDoc(doc(db, "Members", memberId));
+  let snap;
+  try {
+    snap = await getDoc(doc(db, "Members", memberId));
+  } catch (err) {
+    // The fallback Security Rules make registered member records private
+    if (err.code === "permission-denied") return "taken";
+    throw err;
+  }
   if (!snap.exists()) return "not_found";
   const member = snap.data();
   return member.uid || member.email ? "taken" : "available";
@@ -156,16 +162,14 @@ export async function deleteMyAccount(memberId, mpin) {
   await deleteUser(auth.currentUser);
 }
 
-/** Forgot password: check the MPIN for this email before a reset email is sent. */
-export async function verifyPasswordResetMpin(email, mpin) {
-  if (useCloudFunctions) {
-    await callFunction("verifyPasswordResetMpin", { email, mpin });
-    return;
-  }
+/**
+ * Forgot password: check the MPIN for this email before a reset email is sent.
+ * Only available with Cloud Functions. Without a server the check would need member
+ * records (and MPIN hashes) to be readable by email by anyone, so the app skips it and
+ * relies on the reset link going only to the account's inbox.
+ */
+export const passwordResetChecksMpin = useCloudFunctions;
 
-  const match = await getDocs(query(collection(db, "Members"), where("email", "==", email), limit(1)));
-  const member = match.docs[0]?.data();
-  if (!(await mpinMatches(mpin, member?.mpinHash, member?.mpinSalt))) {
-    throw new ApiError("permission-denied", "Email or MPIN is incorrect.");
-  }
+export async function verifyPasswordResetMpin(email, mpin) {
+  if (useCloudFunctions) await callFunction("verifyPasswordResetMpin", { email, mpin });
 }

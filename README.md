@@ -23,7 +23,7 @@ It was built as a capstone project by Quinn Agas and Neil Patrick Atienza and ha
 
 Captured from the app running against the Firebase emulators with the fictional seed data (`npm run seed:emulator`).
 
-**Try it on Android:** every CI run builds a debug APK. Open the [latest successful run](https://github.com/quintuckyy/Application-SVConnect/actions/workflows/ci.yml?query=branch%3Amain+is%3Asuccess) and download `svconnect-debug-apk` under Artifacts (requires a GitHub login).
+**Try it on Android:** every CI run on `main` builds a debug APK connected to the live demo project. Open the [latest successful run](https://github.com/quintuckyy/Application-SVConnect/actions/workflows/ci.yml?query=branch%3Amain+is%3Asuccess) and download `svconnect-debug-apk` under Artifacts (requires a GitHub login).
 
 ---
 
@@ -185,7 +185,14 @@ The web app reads its Firebase and Supabase settings from `.env` (see `.env.exam
 3. Seed test data: Project settings → Service accounts → Generate new private key, save it as `serviceAccountKey.json` in the repo root (gitignored), then run `npm run seed`. Register in the app with Member ID 100001, 100002 or 100003. The script refuses to write to any project except the one named in it.
 4. For Android push notifications, download your own `google-services.json` into `android/app/` and set your own `onesignal_app_id` in `AndroidManifest.xml`.
 
-**Deploying the server side** (requires the Blaze plan): `firebase deploy --only functions,firestore`, then set `VITE_USE_CLOUD_FUNCTIONS=true` in `.env`. Deploy the rules and functions together: the rules block the client-side fallback.
+**Security Rules for each setup.** There are two rule sets, and the one deployed must match how the app runs:
+
+| Setup                                                                  | Rules                                                                                                                | Deploy                                       |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Cloud Functions deployed (Blaze plan), `VITE_USE_CLOUD_FUNCTIONS=true` | [`firestore.rules`](firestore.rules): strict                                                                         | `firebase deploy --only functions,firestore` |
+| No Cloud Functions (Spark plan), `VITE_USE_CLOUD_FUNCTIONS=false`      | [`firestore.fallback.rules`](firestore.fallback.rules): allows exactly the writes the app makes itself, nothing else | `npm run deploy:rules -- fallback`           |
+
+The live project currently runs the fallback rules. Their limits compared with Cloud Functions are listed at the top of the file; both rule sets are tested against the emulator (`npm run test:emulator`).
 
 The home-screen announcement comes from a Supabase `announcements` table. If the Supabase variables are empty, the banner keeps its default content.
 

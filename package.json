@@ -18,7 +18,8 @@
     "seed": "node scripts/seed-firestore.mjs",
     "seed:emulator": "node scripts/seed-firestore.mjs --emulator",
     "emulators": "npm --prefix functions run build && node scripts/firebase-emulators.mjs emulators:start --project demo-svconnect",
-    "postinstall": "npm --prefix functions install"
+    "postinstall": "npm --prefix functions install",
+    "deploy:rules": "node scripts/deploy-rules.mjs"
   },
   "keywords": [],
   "author": "",

@@ -1,0 +1,139 @@
+rules_version = '2';
+
+// SVConnect fallback Security Rules
+//
+// For a Firebase project WITHOUT the Cloud Functions deployed (they need the Blaze plan).
+// The app then does registration, loan applications and overdue checks itself
+// (www/js/services/api.js with VITE_USE_CLOUD_FUNCTIONS=false), so these rules allow
+// exactly those writes and nothing else.
+//
+// Known limits compared with firestore.rules + Cloud Functions:
+// - An unregistered member record can be read by anyone who knows its Member ID,
+//   because registration checks the ID before an account exists.
+// - A member can read their own MPIN hash (stored on the member record).
+// - "One pending application at a time" is checked by the app, not enforced here.
+// Deploy firestore.rules together with the Cloud Functions to remove these.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsMember(memberId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/Members/$(memberId)).data.get('uid', null) == request.auth.uid;
+    }
+
+    function onlyChanges(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    function isRecent(ts) {
+      return ts is timestamp
+        && ts > request.time - duration.value(5, 'm')
+        && ts < request.time + duration.value(5, 'm');
+    }
+
+    match /loanProducts/{loanType} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // Used only by Cloud Functions
+    match /memberSecrets/{memberId} {
+      allow read, write: if false;
+    }
+
+    match /Members/{memberId} {
+      // Registration step 1 checks the Member ID before an account exists: allow reading a
+      // single record only while it isn't linked to anyone. Registered records are private.
+      allow get: if !('uid' in resource.data) || resource.data.uid == request.auth.uid;
+
+      // Lets the app find its own member: query(Members, where("uid", "==", auth.uid))
+      allow list: if signedIn() && resource.data.uid == request.auth.uid;
+
+      // Registration step 2: link an unclaimed record to the signed-in account
+      allow update: if signedIn()
+        && !('uid' in resource.data)
+        && onlyChanges(['email', 'uid', 'registered', 'mpinHash', 'mpinSalt', 'registeredAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.registered == true
+        && request.resource.data.mpinHash is string && request.resource.data.mpinHash.size() == 64
+        && request.resource.data.mpinSalt is string && request.resource.data.mpinSalt.size() == 32
+        && isRecent(request.resource.data.registeredAt);
+
+      // Profile changes by the owner
+      allow update: if signedIn() && resource.data.uid == request.auth.uid
+        && onlyChanges(['displayName', 'firstLoginNotificationSent'])
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() > 0
+        && request.resource.data.displayName.size() <= 80
+        && (!('firstLoginNotificationSent' in request.resource.data)
+            || request.resource.data.firstLoginNotificationSent == true);
+
+      // Account deletion: the owner removes only their login fields
+      allow update: if signedIn() && resource.data.uid == request.auth.uid
+        && onlyChanges(['email', 'uid', 'registered', 'registeredAt', 'firstLoginNotificationSent', 'mpinHash', 'mpinSalt'])
+        && !('uid' in request.resource.data)
+        && !('email' in request.resource.data)
+        && !('mpinHash' in request.resource.data);
+
+      allow create, delete: if false;
+
+      match /Notifications/{notificationId} {
+        allow read, delete: if ownsMember(memberId);
+
+        // Events the app reports itself when Cloud Functions aren't deployed
+        allow create: if ownsMember(memberId)
+          && request.resource.data.keys().hasOnly(['title', 'message', 'type', 'createdAt', 'seen'])
+          && request.resource.data.type in ['login', 'passwordReset', 'loanApplication', 'gmailRemoved', 'loanOverDue', 'loanPenaltyEligible']
+          && request.resource.data.title is string && request.resource.data.title.size() <= 100
+          && request.resource.data.message is string && request.resource.data.message.size() <= 1000
+          && request.resource.data.seen == false
+          && isRecent(request.resource.data.createdAt);
+
+        allow update: if ownsMember(memberId)
+          && onlyChanges(['seen'])
+          && request.resource.data.seen == true;
+      }
+
+      match /Transactions/{transactionId} {
+        allow read: if ownsMember(memberId);
+        allow update: if ownsMember(memberId)
+          && onlyChanges(['seen'])
+          && request.resource.data.seen == true;
+      }
+
+      match /loanApplications/{applicationId} {
+        allow read: if ownsMember(memberId);
+        // New applications always start as Pending, for this member
+        allow create: if ownsMember(memberId)
+          && request.resource.data.status == 'Pending'
+          && request.resource.data.memberID == memberId
+          && request.resource.data.loanAmount is number && request.resource.data.loanAmount > 0
+          && request.resource.data.loanTerm is number && request.resource.data.loanTerm > 0
+          && isRecent(request.resource.data.dateApplied);
+      }
+
+      match /approvedLoans/{loanId} {
+        allow read: if ownsMember(memberId);
+        // The app's overdue check may flag the loan and add the penalty, never reduce
+        // the penalty or touch balances and the schedule
+        allow update: if ownsMember(memberId)
+          && onlyChanges(['isOverDue', 'penaltyEligible', 'penalties'])
+          && request.resource.data.get('isOverDue', false) in [true, resource.data.get('isOverDue', false)]
+          && request.resource.data.get('penaltyEligible', false) in [true, resource.data.get('penaltyEligible', false)]
+          && request.resource.data.get('penalties', 0) is number
+          && request.resource.data.get('penalties', 0) >= resource.data.get('penalties', 0)
+          && request.resource.data.get('penalties', 0) <= resource.data.get('penalties', 0) + resource.data.monthlyPayment * 0.02 + 0.01;
+      }
+
+      match /paymentHistory/{id}  { allow read: if ownsMember(memberId); }
+      match /completedLoans/{id}  { allow read: if ownsMember(memberId); }
+      match /savingsAccount/{id}  { allow read: if ownsMember(memberId); }
+    }
+  }
+}
