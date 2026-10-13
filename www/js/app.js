@@ -150,7 +150,6 @@ function initBackButtonHandler() {
       // Fallback → home
       location.hash = "#/home";
     });
-    console.log("Back button handler attached");
   } catch (error) {
     console.error("Error attaching back button handler:", error);
   }

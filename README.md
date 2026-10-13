@@ -4,7 +4,26 @@
 
 SVConnect is the member-facing mobile app for St. Vincent Ferrer Multi-Purpose Cooperative (SVFMPC) in Romblon. Members can check their savings, track loan applications, review transaction history, and see cooperative announcements from their phone instead of having to go to the office for every inquiry. It pairs with a separate web admin dashboard that staff use to manage member records.
 
-This was built as a capstone project and has since been approved by SVFMPC management for turnover.
+It was built as a capstone project by Quinn Agas and Neil Patrick Atienza and has since been approved by SVFMPC management for turnover. See [Credits](#credits).
+
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/01-login.png" width="220" alt="Sign-in screen"><br>Sign in</td>
+    <td align="center"><img src="docs/screenshots/02-home.png" width="220" alt="Home dashboard with quick actions"><br>Home</td>
+    <td align="center"><img src="docs/screenshots/03-loan-overview.png" width="220" alt="Loan overview with balance and schedule"><br>Loan overview</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/04-savings.png" width="220" alt="Savings account and share capital"><br>Savings</td>
+    <td align="center"><img src="docs/screenshots/05-notifications.png" width="220" alt="Notification inbox"><br>Notifications</td>
+    <td align="center"><img src="docs/screenshots/06-reset-dialog.png" width="220" alt="Password reset dialog with a masked MPIN field"><br>Password reset (masked MPIN)</td>
+  </tr>
+</table>
+
+Captured from the app running against the Firebase emulators with the fictional seed data (`npm run seed:emulator`).
+
+**Try it on Android:** every CI run builds a debug APK. Open the [latest successful run](https://github.com/quintuckyy/Application-SVConnect/actions/workflows/ci.yml?query=branch%3Amain+is%3Asuccess) and download `svconnect-debug-apk` under Artifacts (requires a GitHub login).
 
 ---
 
@@ -106,8 +125,6 @@ npm run dev:emulator     # terminal 2: the app at http://localhost:5503
 
 Register with Member ID 100001, 100002 or 100003. The emulator doesn't send emails: open the Emulator UI → Authentication to verify the account's email.
 
-If the emulator reports `Failed to load function definition ... Timeout after 10000` (common on the first run after `npm install`), set `FUNCTIONS_DISCOVERY_TIMEOUT=60` in your shell and start it again.
-
 **Against a real Firebase project.**
 
 ```bash
@@ -193,4 +210,12 @@ SVConnect Mobile Application is a member-facing app developed as a capstone proj
 
 ## Project Status
 
-Completed as a capstone project and approved by St. Vincent Cooperative management for turnover. Further improvements may include production package naming, automated testing, CI/CD release builds, and offline support.
+Completed as a capstone project and approved by St. Vincent Cooperative management for turnover. This repository has since added server-side validation, Security Rules, automated tests and CI. Further improvements may include production package naming, signed release builds, and offline support.
+
+---
+
+## Credits
+
+SVConnect was built as a capstone project by **Quinn Agas** and **Neil Patrick Atienza** for St. Vincent Ferrer Multi-Purpose Cooperative.
+
+This repository is Quinn Agas's continuation of that project. The original application was imported in the first commit; the changes since then (the Vite build, Cloud Functions and Security Rules, the test suites and CI) are listed in the commit history.

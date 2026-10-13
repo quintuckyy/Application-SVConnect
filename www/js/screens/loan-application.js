@@ -394,7 +394,6 @@ export function LoanApplication(loanType) {
 
 export async function initLoanApplication(loanType) {
   try {
-    console.log(`Loan: ${loanType}`);
     const termsLink = document.getElementById("termsLink");
     const termsOverlay = document.getElementById("termsOverlay");
     const closeTermsBtn = document.getElementById("closeTermsBtn");
@@ -434,9 +433,6 @@ export async function initLoanApplication(loanType) {
 
     setupAgeValidation();
 
-    console.log(`Type of Loan: ${loanDetails.loan}`);
-    console.log(`URL: ${loanDetails.imgURL}`);
-
     const loanSnap = await getLoanProducts(loanType);
     const maxTrm = loanSnap.loanTerms.maxMonths;
     const minTrm = loanSnap.loanTerms.minMonths;
@@ -470,7 +466,6 @@ export async function initLoanApplication(loanType) {
         document.getElementById("dateOfBirth").value = memberSnap.birthDate.toDate().toLocaleDateString("en-CA");
 
         if (nameID) {
-          alert(memberID);
           nameID.textContent = `${memberID}`;
         }
 

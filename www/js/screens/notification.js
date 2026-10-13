@@ -119,7 +119,7 @@ export function initNotifications() {
     }
   });
 }
-//everytime na may bagong notification malalagay itong code na to
+// Renders the notification list (used on load and after a delete)
 async function renderNotif(memberID) {
   try {
     const notifBody = document.getElementById("notifBody");
