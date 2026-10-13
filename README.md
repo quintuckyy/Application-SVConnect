@@ -6,6 +6,25 @@ SVConnect is the member-facing mobile app for St. Vincent Ferrer Multi-Purpose C
 
 This was built as a capstone project and has since been approved by SVFMPC management for turnover.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/01-login.png" width="220" alt="Sign-in screen"><br>Sign in</td>
+    <td align="center"><img src="docs/screenshots/02-home.png" width="220" alt="Home dashboard with quick actions"><br>Home</td>
+    <td align="center"><img src="docs/screenshots/03-loan-overview.png" width="220" alt="Loan overview with balance and schedule"><br>Loan overview</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/04-savings.png" width="220" alt="Savings account and share capital"><br>Savings</td>
+    <td align="center"><img src="docs/screenshots/05-notifications.png" width="220" alt="Notification inbox"><br>Notifications</td>
+    <td align="center"><img src="docs/screenshots/06-reset-dialog.png" width="220" alt="Password reset dialog with a masked MPIN field"><br>Password reset (masked MPIN)</td>
+  </tr>
+</table>
+
+Captured from the app running against the Firebase emulators with the fictional seed data (`npm run seed:emulator`).
+
+**Try it on Android:** every CI run builds a debug APK. Open the [latest successful run](https://github.com/quintuckyy/Application-SVConnect/actions/workflows/ci.yml?query=branch%3Amain+is%3Asuccess) and download `svconnect-debug-apk` under Artifacts (requires a GitHub login).
+
 ---
 
 ## Tech Stack
@@ -105,8 +124,6 @@ npm run dev:emulator     # terminal 2: the app at http://localhost:5503
 ```
 
 Register with Member ID 100001, 100002 or 100003. The emulator doesn't send emails: open the Emulator UI → Authentication to verify the account's email.
-
-If the emulator reports `Failed to load function definition ... Timeout after 10000` (common on the first run after `npm install`), set `FUNCTIONS_DISCOVERY_TIMEOUT=60` in your shell and start it again.
 
 **Against a real Firebase project.**
 

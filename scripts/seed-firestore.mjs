@@ -130,7 +130,7 @@ function savingsAccount(memberId, balance, shares) {
 // Member 100002 has an active 12-month personal loan with 3 payments made.
 // TESTDATE is set to "now" because home.js and loan-overview.js use it as today's date.
 function activeLoan() {
-  const principal = 50000,
+  const principal = 60000,
     months = 12,
     rate = 0.12;
   const monthlyInterest = round2((principal * rate) / 12);
@@ -226,7 +226,7 @@ const subcollections = {
     Notifications: {
       n1: {
         title: "Loan Approved",
-        message: "Your Personal Loan of ₱50,000.00 has been approved.",
+        message: "Your Personal Loan of ₱60,000.00 has been approved.",
         type: "loan",
         createdAt: ts(daysAgo(100)),
         seen: true,

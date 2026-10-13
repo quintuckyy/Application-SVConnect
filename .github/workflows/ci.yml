@@ -78,9 +78,6 @@ jobs:
       # Starts the Auth, Firestore and Functions emulators, runs the tests, then shuts them down
       - name: Emulator tests
         run: npm run test:emulator
-        env:
-          # Loading the functions on a fresh runner can take longer than the default 10 seconds
-          FUNCTIONS_DISCOVERY_TIMEOUT: 60
 
   android:
     name: Android debug build
