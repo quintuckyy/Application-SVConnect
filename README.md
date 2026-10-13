@@ -106,6 +106,8 @@ npm run dev:emulator     # terminal 2: the app at http://localhost:5503
 
 Register with Member ID 100001, 100002 or 100003. The emulator doesn't send emails: open the Emulator UI → Authentication to verify the account's email.
 
+If the emulator reports `Failed to load function definition ... Timeout after 10000` (common on the first run after `npm install`), set `FUNCTIONS_DISCOVERY_TIMEOUT=60` in your shell and start it again.
+
 **Against a real Firebase project.**
 
 ```bash
