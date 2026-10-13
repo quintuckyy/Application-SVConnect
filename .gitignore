@@ -10,6 +10,7 @@ android/app/google-services.json
 GoogleService-Info.plist
 *serviceAccountKey.json
 *service-account*.json
+*firebase-adminsdk*.json
 
 # Android local machine config
 android/local.properties
