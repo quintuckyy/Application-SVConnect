@@ -143,34 +143,3 @@ export async function createNotification(memberID, title, message, type) {
     console.error("Error creating notification:", err);
   }
 }
-
-//spinnerFunc
-export function showSpinner() {
-  document.getElementById("spinner").classList.remove("hidden");
-}
-
-export function hideSpinner() {
-  document.getElementById("spinner").classList.add("hidden");
-}
-
-//toast func
-export function showSuccess(message) {
-  const successOverlay = document.getElementById("successOverlay");
-  const successMessage = document.getElementById("successMessage");
-  const closeSuccess = document.getElementById("closeSuccess");
-
-  if (!successOverlay || !successMessage || !closeSuccess) {
-    console.error("❌ Toast elements not found in DOM.");
-    return;
-  }
-
-  successMessage.textContent = message;
-  successOverlay.classList.remove("hidden");
-  successOverlay.classList.add("flex");
-
-  //close when OK is clicked
-  closeSuccess.onclick = () => {
-    successOverlay.classList.add("hidden");
-    successOverlay.classList.remove("flex");
-  };
-}

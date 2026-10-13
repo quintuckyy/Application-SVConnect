@@ -1,14 +1,7 @@
-import { auth } from "../services/firebase.js";
-import { onAuthStateChanged } from "firebase/auth";
-import {
-  getLoanProducts,
-  getMemberID,
-  getMemberRef,
-  getLoanRef,
-  showSpinner,
-  hideSpinner,
-  showSuccess,
-} from "../services/firebaseFunctions.js";
+import { whenSignedIn } from "../services/session.js";
+
+import { getLoanProducts, getMemberID, getMemberRef, getLoanRef } from "../services/firebaseFunctions.js";
+import { showSpinner, hideSpinner, showSuccess, showError } from "../services/ui.js";
 import { submitLoanApplication } from "../services/api.js";
 import {
   validateLoanApplication,
@@ -464,7 +457,7 @@ export async function initLoanApplication(loanType) {
       if (e.target === overlay) overlay.classList.add("hidden");
     });
 
-    onAuthStateChanged(auth, async (user) => {
+    whenSignedIn(async (user) => {
       if (user) {
         const memberID = await getMemberID(user);
         const memberSnap = await getMemberRef(memberID);
@@ -489,7 +482,9 @@ export async function initLoanApplication(loanType) {
       }
     });
   } catch (err) {
-    console.log(err);
+    console.error(err);
+    hideSpinner();
+    showError("The loan application form couldn't be loaded. Check your connection and try again.");
   }
 }
 

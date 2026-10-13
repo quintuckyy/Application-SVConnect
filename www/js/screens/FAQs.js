@@ -1,5 +1,4 @@
-import { auth } from "../services/firebase.js";
-import { onAuthStateChanged } from "firebase/auth";
+import { whenSignedIn } from "../services/session.js";
 
 export function FAQs() {
   return `
@@ -537,7 +536,7 @@ export function FAQs() {
 }
 
 export function initFAQs() {
-  onAuthStateChanged(auth, async (user) => {
+  whenSignedIn(async (user) => {
     if (user) {
       try {
         const filterButtons = document.querySelectorAll(".faq-chip[data-filter]");
@@ -590,7 +589,7 @@ export function initFAQs() {
         // Initial filter (All + empty search)
         applyFilter();
       } catch (err) {
-        console.log(err);
+        console.error(err);
       }
     }
   });

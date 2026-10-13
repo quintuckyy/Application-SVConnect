@@ -1,5 +1,8 @@
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
+import { getSignedInUser } from "./services/session.js";
+import { showError } from "./services/ui.js";
+import { escapeHtml } from "./lib/html.js";
 import { Home, initHomeDashboard } from "./screens/home.js";
 import { LoanApplication, initLoanApplication } from "./screens/loan-application.js";
 import { LoanOverview, initLoanOverview } from "./screens/loan-overview.js";
@@ -281,11 +284,24 @@ function mount() {
     renderBottomNav(hash);
   } catch (err) {
     console.error("Mount error:", err);
-    root.innerHTML = `<div class="p-4 text-red-600">Error loading page: ${err.message}</div>`;
+    root.innerHTML = `<div class="p-4 text-red-600">Error loading page: ${escapeHtml(err.message)}</div>`;
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+// Anything that fails without being handled gets a visible message instead of failing silently
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("Unhandled error:", event.reason);
+  showError("Something went wrong. Check your connection and try again.");
+});
+
+document.addEventListener("DOMContentLoaded", async () => {
+  // Route guard: the app shell is only for signed-in members with a verified email
+  const user = await getSignedInUser();
+  if (!user || !user.emailVerified) {
+    location.replace("index.html");
+    return;
+  }
+
   initBackButtonHandler();
 
   // Set up routing

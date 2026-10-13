@@ -1,6 +1,7 @@
-import { auth } from "../services/firebase.js";
-import { onAuthStateChanged } from "firebase/auth";
-import { getMemberID, getMemberRef, getSavingsRef, showSpinner, hideSpinner } from "../services/firebaseFunctions.js";
+import { whenSignedIn } from "../services/session.js";
+
+import { getMemberID, getMemberRef, getSavingsRef } from "../services/firebaseFunctions.js";
+import { showSpinner, hideSpinner, showError } from "../services/ui.js";
 
 export function Savings() {
   return `
@@ -130,7 +131,7 @@ export function Savings() {
 }
 
 export function initSavingsOverview() {
-  onAuthStateChanged(auth, async (user) => {
+  whenSignedIn(async (user) => {
     if (user) {
       try {
         showSpinner();
@@ -192,7 +193,9 @@ export function initSavingsOverview() {
                 document.getElementById("savingsBuildUp").textContent = `₱${Number(loanDoc.savingsBuildUp).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
                 document.getElementById("capitalBuildUp").textContent = `₱${Number(loanDoc.capitalBuildUp).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`*/
       } catch (err) {
-        console.log(err);
+        console.error(err);
+        hideSpinner();
+        showError("Your savings couldn't be loaded. Check your connection and try again.");
       }
     }
   });

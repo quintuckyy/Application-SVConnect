@@ -1,13 +1,8 @@
-import { auth } from "../services/firebase.js";
-import { onAuthStateChanged } from "firebase/auth";
-import {
-  getMemberID,
-  getMemberRef,
-  getCompletedLoansRef,
-  formatDate,
-  showSpinner,
-  hideSpinner,
-} from "../services/firebaseFunctions.js";
+import { whenSignedIn } from "../services/session.js";
+import { escapeHtml } from "../lib/html.js";
+
+import { getMemberID, getMemberRef, getCompletedLoansRef, formatDate } from "../services/firebaseFunctions.js";
+import { showSpinner, hideSpinner, showError } from "../services/ui.js";
 
 export function CompletedLoans() {
   return `
@@ -63,7 +58,7 @@ export function CompletedLoans() {
 }
 
 export function initCompletedLoans() {
-  onAuthStateChanged(auth, async (user) => {
+  whenSignedIn(async (user) => {
     if (user) {
       try {
         showSpinner();
@@ -79,7 +74,9 @@ export function initCompletedLoans() {
         hideSpinner();
         renderCompletedLoans(memberID);
       } catch (err) {
-        console.log(err);
+        console.error(err);
+        hideSpinner();
+        showError("Your completed loans couldn't be loaded. Check your connection and try again.");
       }
     }
   });
@@ -109,7 +106,7 @@ async function renderCompletedLoans(memberID) {
                         <div class="flex items-start justify-between mb-3">
                             <div class="flex-1">
                                 <div class="flex items-center space-x-2 mb-1">
-                                    <h3 class="text-base font-semibold text-gray-800">${compLoan.loanType}</h3>
+                                    <h3 class="text-base font-semibold text-gray-800">${escapeHtml(compLoan.loanType)}</h3>
                                     <span class="bg-green-100 text-green-700 text-xs font-medium px-2 py-0.5 rounded-full flex items-center">
                                         <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
@@ -141,11 +138,11 @@ async function renderCompletedLoans(memberID) {
                             </div>
                             <div>
                                 <p class="text-xs text-gray-500 mb-0.5">Duration</p>
-                                <p class="font-semibold text-gray-800">${compLoan.loanTerms}</p>
+                                <p class="font-semibold text-gray-800">${escapeHtml(compLoan.loanTerms)}</p>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-500 mb-0.5">Interest Rate</p>
-                                <p class="font-semibold text-gray-800">${compLoan.interestRate}</p>
+                                <p class="font-semibold text-gray-800">${escapeHtml(compLoan.interestRate)}</p>
                             </div>
                             <div>
                                 <p class="text-xs text-gray-500 mb-0.5">Interest Paid</p>
@@ -159,6 +156,8 @@ async function renderCompletedLoans(memberID) {
       hideSpinner();
     });
   } catch (err) {
-    console.log(err);
+    console.error(err);
+    hideSpinner();
+    showError("Your completed loans couldn't be loaded. Check your connection and try again.");
   }
 }

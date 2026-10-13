@@ -44,6 +44,12 @@ The app is a client for Firebase. Anything that has to be trusted runs on the se
 
 [`firestore.rules`](firestore.rules) lets a member read only their own records and change only their display name and the read state of notifications and transactions. MPIN hashes can't be read from the app at all. The loan rules and the overdue logic live in `www/js/lib/` and are shared by the app (instant feedback) and the Cloud Functions (enforcement).
 
+In the app itself:
+
+- Text from the database is escaped before it goes into HTML (`www/js/lib/html.js`), so stored markup can't run as script.
+- `app.html` sends signed-out or unverified users back to the login page, and each screen waits for the session once per visit (`services/session.js`) instead of adding a new auth listener every time it opens.
+- Failed loads show a message (`services/ui.js` → `showError`) instead of failing silently or leaving a spinner running.
+
 The screens call `www/js/services/api.js`, which uses the Cloud Functions when `VITE_USE_CLOUD_FUNCTIONS=true` and otherwise falls back to doing the same work in the app. The fallback exists because deploying Cloud Functions needs Firebase's Blaze plan; the strict rules are only safe to deploy together with the functions.
 
 ---

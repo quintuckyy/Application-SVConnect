@@ -1,15 +1,15 @@
-import { auth } from "../services/firebase.js";
+import { whenSignedIn } from "../services/session.js";
 import { assessLoan } from "../lib/loanStatus.js";
-import { onAuthStateChanged } from "firebase/auth";
+import { escapeHtml } from "../lib/html.js";
+
 import {
   getMemberID,
   getMemberRef,
   getSavingsRef,
   getApprovedLoan,
   getPaymentRef,
-  showSpinner,
-  hideSpinner,
 } from "../services/firebaseFunctions.js";
+import { showSpinner, hideSpinner, showError } from "../services/ui.js";
 
 export function LoanOverview() {
   return `
@@ -216,7 +216,7 @@ export function LoanOverview() {
 }
 
 export function initLoanOverview() {
-  onAuthStateChanged(auth, async (user) => {
+  whenSignedIn(async (user) => {
     if (user) {
       initPullToRefresh();
       showSpinner();
@@ -290,7 +290,9 @@ export function initLoanOverview() {
         document.getElementById("progressText").textContent = `${progressPercentage.toFixed(1)}% Completed`;
         renderPayHistory(memberID);
       } catch (err) {
-        console.log(err);
+        console.error(err);
+        hideSpinner();
+        showError("Your loan details couldn't be loaded. Check your connection and try again.");
       }
     }
   });
@@ -323,7 +325,7 @@ async function renderPayHistory(memberID) {
             <div class="flex justify-between items-center py-2">
                 <div>
                     <p class="font-semibold text-gray-900">${formattedDate}</p>
-                    <p class="text-xs text-gray-500">Payment ${pay.paymentIndex + 1}</p>
+                    <p class="text-xs text-gray-500">Payment ${escapeHtml(Number(pay.paymentIndex) + 1)}</p>
                 </div>
                 <div class="text-right">
                     <p class="font-semibold text-green-600">₱${pay.paymentAmt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>

@@ -1,13 +1,8 @@
 import { auth } from "../services/firebase.js";
-import { onAuthStateChanged, signOut } from "firebase/auth";
-import {
-  getMemberID,
-  getMemberRef,
-  formatDate,
-  showSpinner,
-  hideSpinner,
-  showSuccess,
-} from "../services/firebaseFunctions.js";
+import { whenSignedIn } from "../services/session.js";
+import { signOut } from "firebase/auth";
+import { getMemberID, getMemberRef, formatDate } from "../services/firebaseFunctions.js";
+import { showSpinner, hideSpinner, showSuccess, showError } from "../services/ui.js";
 
 export function Profile() {
   return `
@@ -156,7 +151,7 @@ export function Profile() {
 }
 
 export function initProfileDashboard() {
-  onAuthStateChanged(auth, async (user) => {
+  whenSignedIn(async (user) => {
     if (user) {
       try {
         showSpinner();
@@ -189,7 +184,9 @@ export function initProfileDashboard() {
           await logout();
         });
       } catch (err) {
-        console.log(err);
+        console.error(err);
+        hideSpinner();
+        showError("Your profile couldn't be loaded. Check your connection and try again.");
       }
     }
   });

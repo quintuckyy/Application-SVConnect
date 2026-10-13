@@ -1,20 +1,8 @@
 import { auth } from "../services/firebase.js";
-import {
-  onAuthStateChanged,
-  updatePassword,
-  reauthenticateWithCredential,
-  EmailAuthProvider,
-  signOut,
-} from "firebase/auth";
-import {
-  getMemberID,
-  getMemberRef,
-  updateName,
-  createNotification,
-  showSpinner,
-  hideSpinner,
-  showSuccess,
-} from "../services/firebaseFunctions.js";
+import { whenSignedIn } from "../services/session.js";
+import { updatePassword, reauthenticateWithCredential, EmailAuthProvider, signOut } from "firebase/auth";
+import { getMemberID, getMemberRef, updateName, createNotification } from "../services/firebaseFunctions.js";
+import { showSpinner, hideSpinner, showSuccess, showError } from "../services/ui.js";
 import { deleteMyAccount } from "../services/api.js";
 
 export function Settings() {
@@ -134,7 +122,7 @@ export function Settings() {
 }
 
 export function initSettings() {
-  onAuthStateChanged(auth, async (user) => {
+  whenSignedIn(async (user) => {
     if (user) {
       try {
         showSpinner();
@@ -193,7 +181,9 @@ export function initSettings() {
           }
         });
       } catch (err) {
-        console.log(err);
+        console.error(err);
+        hideSpinner();
+        showError("Your settings couldn't be loaded. Check your connection and try again.");
       }
     }
   });
@@ -275,7 +265,7 @@ async function changePassword(user) {
     showSuccess("Your password has been updated. Please Log-in");
     await logout();
   } catch (err) {
-    console.log(err);
+    console.error(err);
     document
       .getElementById("currentPassword")
       .classList.add("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");

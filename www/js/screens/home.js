@@ -1,6 +1,7 @@
 import { auth, db, useCloudFunctions } from "../services/firebase.js";
+import { whenSignedIn } from "../services/session.js";
 import { assessLoan } from "../lib/loanStatus.js";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { signOut } from "firebase/auth";
 import {
   getMemberID,
   getMemberRef,
@@ -10,8 +11,8 @@ import {
   getApprovedLoan,
   getApprovedLoanIDs,
   createNotification,
-  showSuccess,
 } from "../services/firebaseFunctions.js";
+import { showSuccess, showError } from "../services/ui.js";
 import { doc, updateDoc } from "firebase/firestore";
 import { supabase } from "../services/supabase.js";
 
@@ -233,61 +234,54 @@ export function Home() {
 }
 
 export function initHomeDashboard() {
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      document.getElementById("Homespinner").classList.remove("hidden");
-      loadLatestAnnouncement();
-      const memberID = await getMemberID(user);
-      const docSnap = await getMemberRef(memberID);
-      const notifSnap = await getNotifRef(memberID);
-      const transacSnap = await getTransacRef(memberID);
-      const notifDot = document.getElementById("notifDot");
-      const transacDot = document.getElementById("transacDot");
-
-      const loanIDs = await getApprovedLoanIDs(memberID);
-      checkOverDueHome(memberID, loanIDs[0]);
-      document.getElementById("Homespinner").classList.add("hidden");
-      const hasUnseenNotif = notifSnap.some((notif) => notif.seen === "false" || notif.seen === false);
-      const hasUnseenTransac = transacSnap.some((transac) => transac.seen === "false" || transac.seen === false);
-
-      if (hasUnseenNotif) {
-        notifDot.classList.remove("hidden");
-      } else {
-        notifDot.classList.add("hidden");
-      }
-
-      if (hasUnseenTransac) {
-        transacDot.classList.remove("hidden");
-      } else {
-        transacDot.classList.add("hidden");
-      }
-
-      document.getElementById("userName").textContent = docSnap.displayName;
-      document.getElementById("userID").textContent = `Member ID: ${memberID}`;
-      document.getElementById("userInitials").textContent = docSnap.displayName
-        .split(" ")
-        .map((n) => n[0])
-        .join("");
-      //greetings
-      const hour = new Date().getHours();
-      const greetingElement = document.getElementById("greetings");
-      if (hour < 12) {
-        greetingElement.textContent = `Good Morning, ${docSnap.displayName.split(" ")[0]}`;
-      } else if (hour < 18) {
-        greetingElement.textContent = `Good Afternoon, ${docSnap.displayName.split(" ")[0]}`;
-      } else {
-        greetingElement.textContent = `Good Evening, ${docSnap.displayName.split(" ")[0]}`;
-      }
-      const logoutBtn = document.getElementById("logoutBtn");
-      logoutBtn.addEventListener("click", async (e) => {
-        e.preventDefault();
-        await logout();
-      });
-
-      // Initialize pull-to-refresh
-      initPullToRefresh();
+  whenSignedIn(async (user) => {
+    const spinner = document.getElementById("Homespinner");
+    spinner.classList.remove("hidden");
+    try {
+      await loadDashboard(user);
+    } catch (err) {
+      console.error("Loading the dashboard failed:", err);
+      showError("Your dashboard couldn't be loaded. Pull down to try again.");
+    } finally {
+      spinner.classList.add("hidden");
     }
+
+    document.getElementById("logoutBtn").addEventListener("click", async (e) => {
+      e.preventDefault();
+      await logout();
+    });
+    initPullToRefresh();
   });
+}
+
+const greetingFor = (hour) => (hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening");
+
+// Used for the first load and for pull-to-refresh
+async function loadDashboard(user) {
+  const memberID = await getMemberID(user);
+  // These reads don't depend on each other, so run them in parallel instead of one by one
+  const [member, notifications, transactions, loanIDs] = await Promise.all([
+    getMemberRef(memberID),
+    getNotifRef(memberID),
+    getTransacRef(memberID),
+    getApprovedLoanIDs(memberID),
+    loadLatestAnnouncement(),
+  ]);
+
+  const name = member.displayName ?? "Member";
+  document.getElementById("userName").textContent = name;
+  document.getElementById("userID").textContent = `Member ID: ${memberID}`;
+  document.getElementById("userInitials").textContent = name
+    .split(" ")
+    .map((n) => n[0])
+    .join("");
+  document.getElementById("greetings").textContent = `${greetingFor(new Date().getHours())}, ${name.split(" ")[0]}`;
+
+  const unseen = (items) => items.some((item) => item.seen === false || item.seen === "false");
+  document.getElementById("notifDot").classList.toggle("hidden", !unseen(notifications));
+  document.getElementById("transacDot").classList.toggle("hidden", !unseen(transactions));
+
+  await checkOverDueHome(memberID, loanIDs[0]);
 }
 
 //pull-to-refresh functionality
@@ -366,58 +360,13 @@ function initPullToRefresh() {
 
 // Function to refresh the home page
 async function refreshHomePage() {
+  const user = auth.currentUser;
+  if (!user) return;
   try {
-    // Reload the current data
-    const user = auth.currentUser;
-    if (user) {
-      const memberID = await getMemberID(user);
-      const docSnap = await getMemberRef(memberID);
-      const notifSnap = await getNotifRef(memberID);
-      const transacSnap = await getTransacRef(memberID);
-
-      // Reload latest announcement
-      await loadLatestAnnouncement();
-
-      // Update notification and transaction dots
-      const notifDot = document.getElementById("notifDot");
-      const transacDot = document.getElementById("transacDot");
-
-      const hasUnseenNotif = notifSnap.some((notif) => notif.seen === "false" || notif.seen === false);
-      const hasUnseenTransac = transacSnap.some((transac) => transac.seen === "false" || transac.seen === false);
-
-      if (hasUnseenNotif) {
-        notifDot.classList.remove("hidden");
-      } else {
-        notifDot.classList.add("hidden");
-      }
-
-      if (hasUnseenTransac) {
-        transacDot.classList.remove("hidden");
-      } else {
-        transacDot.classList.add("hidden");
-      }
-
-      // Update greeting based on current time
-      const hour = new Date().getHours();
-      const greetingElement = document.getElementById("greetings");
-      const firstName = docSnap.displayName.split(" ")[0];
-
-      if (hour < 12) {
-        greetingElement.textContent = `Good Morning, ${firstName}`;
-      } else if (hour < 18) {
-        greetingElement.textContent = `Good Afternoon, ${firstName}`;
-      } else {
-        greetingElement.textContent = `Good Evening, ${firstName}`;
-      }
-
-      // Check for overdue loans
-      const loanIDs = await getApprovedLoanIDs(memberID);
-      if (loanIDs.length > 0) {
-        await checkOverDueHome(memberID, loanIDs[0]);
-      }
-    }
-  } catch (error) {
-    console.error("Error refreshing home page:", error);
+    await loadDashboard(user);
+  } catch (err) {
+    console.error("Refreshing the dashboard failed:", err);
+    showError("Couldn't refresh. Check your connection and try again.");
   }
 }
 

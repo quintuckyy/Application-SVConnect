@@ -1,5 +1,6 @@
-import { auth } from "../services/firebase.js";
-import { onAuthStateChanged } from "firebase/auth";
+import { whenSignedIn } from "../services/session.js";
+import { hideSpinner, showError } from "../services/ui.js";
+
 import { getLoanRef, getMemberID } from "../services/firebaseFunctions.js";
 
 export function LoanMenu() {
@@ -56,7 +57,7 @@ export function LoanMenu() {
 }
 
 export function initLoans() {
-  onAuthStateChanged(auth, async (user) => {
+  whenSignedIn(async (user) => {
     if (user) {
       try {
         const memberID = await getMemberID(user);
@@ -86,7 +87,9 @@ export function initLoans() {
           });
         }
       } catch (err) {
-        console.log(err);
+        console.error(err);
+        hideSpinner();
+        showError("Your loan applications couldn't be checked. Check your connection and try again.");
       }
     }
   });
