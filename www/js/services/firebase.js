@@ -1,16 +1,24 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, onAuthStateChanged, updatePassword, EmailAuthProvider, reauthenticateWithCredential, signOut, deleteUser   } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { getFirestore, doc, collection, query, where, addDoc, getDocs, getDoc, setDoc, updateDoc, deleteField, orderBy } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
+// Values come from .env (see .env.example). Firebase web config is not secret:
+// it identifies the project, and access is controlled by Security Rules.
 const firebaseConfig = {
-  apiKey: "AIzaSyCSezEazACkGVI-TImbWNfnvfZHvetQlR8",
-  authDomain: "st-vincent-coop-connect.firebaseapp.com",
-  databaseURL: "https://st-vincent-coop-connect-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "st-vincent-coop-connect",
-  storageBucket: "st-vincent-coop-connect.firebasestorage.app",
-  messagingSenderId: "1050498334476",
-  appId: "1:1050498334476:web:2e1d39eb4b4d8633fd9329"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
+
+const missing = Object.entries(firebaseConfig)
+  .filter(([, value]) => !value)
+  .map(([key]) => key);
+if (missing.length) {
+  throw new Error(`Missing Firebase config: ${missing.join(", ")}. Copy .env.example to .env and fill it in.`);
+}
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);

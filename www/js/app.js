@@ -1,3 +1,5 @@
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { Home, initHomeDashboard } from './screens/home.js'
 import { LoanApplication, initLoanApplication, } from './screens/loan-application.js';
 import { LoanOverview, initLoanOverview } from './screens/loan-overview.js';
@@ -41,8 +43,6 @@ const routes = {
 }
 
 let navigationHistory = [];
-let isCapacitorReady = false;
-let isDeviceReady = false;
 let backHandlerAttached = false;
 
 // Bottom navigation routes
@@ -118,18 +118,13 @@ function renderBottomNav(activeHash) {
     `;
 }
 
-// Initialize back button handler - only when Capacitor is ready
+// Android hardware back button. Only exists in the native app, not in a browser.
 function initBackButtonHandler() {
-    if (backHandlerAttached) return;
-    if (!window.Capacitor || !window.Capacitor.App) {
-        console.log("Capacitor App plugin not ready yet");
-        return;
-    }
+    if (backHandlerAttached || !Capacitor.isNativePlatform()) return;
 
     backHandlerAttached = true;
 
     try {
-        const { App } = window.Capacitor;
         App.addListener("backButton", () => {
             const current = location.hash.split("?")[0] || "#/home";
 
@@ -291,22 +286,8 @@ function mount() {
     }
 }
 
-// Wait for Capacitor to be ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM Content Loaded");
-    
-    // Check if Capacitor is available
-    if (window.Capacitor) {
-        isCapacitorReady = true;
-        console.log("Capacitor detected");
-        
-        // Initialize back button after a short delay to ensure plugin is loaded
-        setTimeout(() => {
-            initBackButtonHandler();
-        }, 300);
-    } else {
-        console.log("Capacitor not available (likely running in browser)");
-    }
+    initBackButtonHandler();
 
     // Set up routing
     window.addEventListener('hashchange', mount);

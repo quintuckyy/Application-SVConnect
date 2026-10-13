@@ -1,15 +1,24 @@
 {
-  "name": "stvincentapp2",
+  "name": "svconnect",
   "version": "1.0.0",
-  "main": "index.js",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "android": "vite build && cap sync android",
     "seed": "node scripts/seed-firestore.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Member app for St. Vincent Ferrer Multi-Purpose Cooperative: savings, loans and notifications on Android.",
   "dependencies": {
     "@capacitor/android": "^7.4.4",
     "@capacitor/app": "^7.1.0",
@@ -18,12 +27,21 @@
     "@capacitor/core": "^7.4.4",
     "@capacitor/push-notifications": "^7.0.3",
     "@capacitor/toast": "^7.0.2",
-    "@tailwindcss/cli": "^4.1.17",
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "@supabase/supabase-js": "^2.117.3",
     "firebase": "^12.6.0"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
+    "@eslint/js": "^10.0.1",
+    "autoprefixer": "^10.6.1",
+    "eslint": "^10.12.0",
     "firebase-admin": "^13.10.0",
-    "tailwindcss": "^4.1.17"
+    "globals": "^17.13.0",
+    "postcss": "^8.5.30",
+    "prettier": "^3.9.10",
+    "tailwindcss": "^3.4.19",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
   }
 }

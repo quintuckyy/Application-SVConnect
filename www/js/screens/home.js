@@ -1,7 +1,8 @@
 import { auth, db } from "../services/firebase.js";
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { getMemberID, getMemberRef, getNotifRef, getTransacRef, getPaymentRef, getApprovedLoan, getApprovedLoanIDs, createNotification, showSuccess } from "../services/firebaseFunctions.js";
-import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { doc, updateDoc } from "firebase/firestore";
+import { supabase } from "../services/supabase.js";
 
 export function Home(){
     return`
@@ -485,20 +486,16 @@ async function checkOverDueHome(memberID, loanID) {
     }
 }
 
-//supabase announcement setup
-const SUPABASE_URL = "https://jqhxhtcgtjserstcidyt.supabase.co";
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxaHhodGNndGpzZXJzdGNpZHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2NTUzNzIsImV4cCI6MjA5OTIzMTM3Mn0.ylw5B8dU4t9G-5G-XOt5Di2jCHSrh1xAqrcL-_Pwl_U';
-const { createClient } = supabase;
-const sbHome = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
 export async function loadLatestAnnouncement() {
 const titleEl = document.getElementById('homeAnnTitle');
 const subtitleEl = document.getElementById('homeAnnSubtitle');
 const imgEl = document.getElementById('homeAnnImage');
 const btnEl = document.getElementById('homeAnnButton');
 
+if (!supabase) return;
+
 try {
-    const { data, error } = await sbHome
+    const { data, error } = await supabase
     .from('announcements')
     .select('*')
     .eq('is_published', true)
@@ -545,4 +542,3 @@ try {
 }
 }
 
-document.addEventListener('DOMContentLoaded', loadLatestAnnouncement);

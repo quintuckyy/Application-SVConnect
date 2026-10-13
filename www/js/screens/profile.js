@@ -1,5 +1,5 @@
 import { auth } from "../services/firebase.js";
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { getMemberID, getMemberRef, formatDate, showSpinner, hideSpinner, showSuccess } from "../services/firebaseFunctions.js";
 
 

@@ -1,7 +1,6 @@
-import { auth, db } from "../services/firebase.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";;
-import { getMemberID, getNotifRef, getMemberRef, getCompletedLoansRef, formatDate, showSpinner, hideSpinner } from "../services/firebaseFunctions.js";
-import { updateDoc, doc, getDoc, collection } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { auth } from "../services/firebase.js";
+import { onAuthStateChanged } from "firebase/auth";
+import { getMemberID, getMemberRef, getCompletedLoansRef, formatDate, showSpinner, hideSpinner } from "../services/firebaseFunctions.js";
 
 export function CompletedLoans() {
     return`
@@ -95,7 +94,6 @@ async function renderCompletedLoans(memberID) {
         loanCardBody.classList.remove("hidden")
 
         completedLoanSnap.forEach(compLoan => {
-            const interestPaid = compLoan.totalPaid - compLoan.totalLoan
             const loanContainer = document.createElement('div')
             loanContainer.innerHTML = `
                 <div class="bg-white rounded-2xl shadow-lg overflow-hidden mb-4">

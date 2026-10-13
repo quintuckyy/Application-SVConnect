@@ -1,7 +1,7 @@
 import { auth, db } from "../services/firebase.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";;
+import { onAuthStateChanged } from "firebase/auth";
 import { getMemberID, getTransacRef, formatDate, showSpinner, hideSpinner } from "../services/firebaseFunctions.js";
-import { updateDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { updateDoc, doc, getDoc } from "firebase/firestore";
 
 export function Transactions() {
     return`

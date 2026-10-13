@@ -1,6 +1,6 @@
 import { auth } from "../services/firebase.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";;
-import { getLoanRef, getMemberID, getMemberRef } from "../services/firebaseFunctions.js";
+import { onAuthStateChanged } from "firebase/auth";
+import { getLoanRef, getMemberID } from "../services/firebaseFunctions.js";
 
 export function LoanMenu() {
     return`

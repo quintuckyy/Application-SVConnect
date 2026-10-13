@@ -1,6 +1,8 @@
 import { auth, db } from "./services/firebase.js";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { doc, getDoc, getDocs, setDoc, collection, addDoc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { verifyMPIN } from "./services/firebaseFunctions.js";
+import { generateSalt, hashMPIN } from "./lib/mpin.js";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail } from "firebase/auth";
+import { doc, getDoc, getDocs, setDoc, collection, addDoc, updateDoc, query, where } from "firebase/firestore";
 
 const signUp = document.getElementById("step2");
 const registerUser = document.getElementById("registerBtn");
@@ -308,32 +310,4 @@ if (privacyOverlay) {
       privacyOverlay.classList.remove('flex');
     }
   });
-}
-
-// Generate a random 16-byte salt
-function generateSalt() {
-  const array = new Uint8Array(16);
-  crypto.getRandomValues(array);
-  return Array.from(array).map(b => b.toString(16).padStart(2,'0')).join('');
-}
-
-// Hash MPIN + salt using SHA-256
-async function hashMPIN(mpin, salt) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(mpin + salt);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-//verify the hashed mpin
-export async function verifyMPIN(memberID, inputMPIN) {
-  const docRef = doc(db, "Members", memberID);
-  const docSnap = await getDoc(docRef);
-
-  if (!docSnap.exists()) return false;
-
-  const { mpinHash, mpinSalt } = docSnap.data();
-  const inputHash = await hashMPIN(inputMPIN, mpinSalt);
-
-  return inputHash === mpinHash;
 }

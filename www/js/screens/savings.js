@@ -1,5 +1,5 @@
 import { auth } from "../services/firebase.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import { onAuthStateChanged } from "firebase/auth";
 import { getMemberID, getMemberRef, getSavingsRef, showSpinner, hideSpinner } from "../services/firebaseFunctions.js";
 
 export function Savings() {

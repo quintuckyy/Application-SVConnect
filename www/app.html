@@ -3,28 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>SVConnect</title>
 
     <script>
       if (localStorage.darkMode === 'true') {
         document.documentElement.classList.add('dark');
       }
     </script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = { darkMode: 'class' }
-    </script>
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
-    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-
-    <!-- Capacitor Core (MUST come before other Capacitor plugins) -->
-    <script src="https://cdn.jsdelivr.net/npm/@capacitor/core@7/dist/capacitor.js"></script>
-    
-    <!-- Capacitor App Plugin -->
-    <script src="https://cdn.jsdelivr.net/npm/@capacitor/app@7/dist/plugin.js"></script>
-    <link rel="stylesheet" href="public/output.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body class="bg-gray-100">
 
@@ -70,6 +58,5 @@
 
     <!-- JS scripts -->
     <script src="./js/app.js" type="module"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </body>
 </html>

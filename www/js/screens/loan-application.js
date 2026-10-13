@@ -1,7 +1,8 @@
 import { auth, db } from "../services/firebase.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";;
+import { onAuthStateChanged } from "firebase/auth";
 import { getLoanProducts, getMemberID, getMemberRef, getLoanRef, createNotification, showSpinner, hideSpinner, showSuccess } from "../services/firebaseFunctions.js";
-import { collection, addDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { collection, addDoc } from "firebase/firestore";
+import { validateLoanApplication, calculateAge, parseDateInput, addBusinessDays, MIN_BORROWER_AGE, MAX_BORROWER_AGE } from "../lib/loanRules.js";
 
 export function LoanApplication(loanType) {
     return`
@@ -520,39 +521,24 @@ subBtn.addEventListener("submit", async (e) => {
             const result = confirm(`Do you want to submit this Loan Application?`)
             if (!result)return
             showSpinner();
-            const loanAmt = document.getElementById("loanAmount").value.trim()
-            const loanTrm = document.getElementById("loanTerm").value.trim()
-            const monthlyIncome = document.getElementById("monthlyIncome").value.trim()
-            //from firebase functions.js
             const memberSnap = await getMemberRef(memberID)
             const loanDoc = await getLoanRef(memberID)
             const loanSnap = await getLoanProducts(loanType)
-            const maxTrm = loanSnap.loanTerms.maxMonths
-            const minTrm = loanSnap.loanTerms.minMonths
 
-            let hasError = false;
-
-            if (parseInt(monthlyIncome) < 5000) {
-                alert("Monthly Income should be ₱5000.00 above")
-                hasError = true
-            }
-
-            if (parseInt(loanAmt) >= 500000 && memberSnap.shareCapital < 20000) {
-                alert("Loan amount exceeds ₱500,000.00 and share capital is below ₱20,000.00")
-                hasError = true
-            }
-            if (parseInt(loanTrm) < minTrm || loanTrm > maxTrm) {
-                alert("Loan Term Invalid")
-                hasError = true
-            }
-            if (!loanDoc.empty) {
-                document.getElementById("submitBtn").classList.add("disabled")
-                alert("You already have an existing loan application.")
-                hasError = true
-            }
+            const errors = validateLoanApplication({
+                monthlyIncome: formVal.monthlyIncome,
+                loanAmount: formVal.loanAmount,
+                loanTerm: formVal.loanTerm,
+                shareCapital: memberSnap.shareCapital,
+                termLimits: loanSnap.loanTerms,
+                hasExistingApplication: !loanDoc.empty,
+            });
             hideSpinner();
-            if (hasError) return
-            hideSpinner();
+            if (errors.length) {
+                if (!loanDoc.empty) document.getElementById("submitBtn").classList.add("disabled")
+                alert(errors.join("\n"))
+                return
+            }
 
             const dateApplied = new Date();
             const deadlineDate = addBusinessDays(dateApplied, 3);
@@ -574,7 +560,9 @@ subBtn.addEventListener("submit", async (e) => {
                 location.hash = '#/home';
             }, 3000);
         } catch (err) {
-            console.log(err)
+            console.error("Loan application failed:", err)
+            hideSpinner();
+            alert("Your application could not be submitted. Check your connection and try again.")
         }
     })
 }
@@ -585,8 +573,8 @@ function setupAgeValidation() {
     
     //calculate max date (18 years ago) and min date (80 years ago)
     const today = new Date();
-    const maxDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-    const minDate = new Date(today.getFullYear() - 80, today.getMonth(), today.getDate());
+    const maxDate = new Date(today.getFullYear() - MIN_BORROWER_AGE, today.getMonth(), today.getDate());
+    const minDate = new Date(today.getFullYear() - MAX_BORROWER_AGE, today.getMonth(), today.getDate());
     
     //set date input restrictions
     dateOfBirthInput.max = maxDate.toISOString().split('T')[0];
@@ -595,19 +583,10 @@ function setupAgeValidation() {
     //validate age matches birthdate
     function validateAgeAndBirthdate() {
         const age = parseInt(ageInput.value);
-        const birthdate = new Date(dateOfBirthInput.value);
-        
         if (!age || !dateOfBirthInput.value) return;
-        
-        const today = new Date();
-        let calculatedAge = today.getFullYear() - birthdate.getFullYear();
-        const monthDiff = today.getMonth() - birthdate.getMonth();
-        
-        //adjust age if birthday hasn't occurred this year
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthdate.getDate())) {
-            calculatedAge--;
-        }
-        
+
+        const calculatedAge = calculateAge(parseDateInput(dateOfBirthInput.value));
+
         if (calculatedAge !== age) {
             alert(`Age ${age} does not match the birthdate. Calculated age is ${calculatedAge}.`);
             dateOfBirthInput.value = "";
@@ -619,38 +598,13 @@ function setupAgeValidation() {
     //auto-calculate age from birthdate
     dateOfBirthInput.addEventListener("change", function() {
         if (this.value) {
-            const birthdate = new Date(this.value);
-            const today = new Date();
-            let age = today.getFullYear() - birthdate.getFullYear();
-            const monthDiff = today.getMonth() - birthdate.getMonth();
-            
-            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthdate.getDate())) {
-                age--;
-            }
-            
-            ageInput.value = age;
+            ageInput.value = calculateAge(parseDateInput(this.value));
         }
     });
     
     //validate when age is entered
     ageInput.addEventListener("change", validateAgeAndBirthdate);
     dateOfBirthInput.addEventListener("blur", validateAgeAndBirthdate);
-}
-
-// Function to calculate business days (excluding weekends)
-function addBusinessDays(startDate, daysToAdd) {
-    let currentDate = new Date(startDate);
-    let addedDays = 0;
-    
-    while (addedDays < daysToAdd) {
-        currentDate.setDate(currentDate.getDate() + 1);
-        // Check if it's not Saturday (6) or Sunday (0)
-        if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) {
-            addedDays++;
-        }
-    }
-    
-    return currentDate;
 }
 
 // Function to format date as "Month DD, YYYY"

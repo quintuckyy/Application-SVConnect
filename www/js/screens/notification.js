@@ -1,7 +1,7 @@
 import { auth, db } from "../services/firebase.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";;
+import { onAuthStateChanged } from "firebase/auth";
 import { getMemberID, getNotifRef, formatDate, showSpinner, hideSpinner, showSuccess } from "../services/firebaseFunctions.js";
-import { updateDoc, doc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { updateDoc, doc, getDoc, deleteDoc } from "firebase/firestore";
 
 export function Notification() {
     return`

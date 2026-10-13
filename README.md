@@ -8,16 +8,11 @@ This was built as a capstone project and has since been approved by SVFMPC manag
 
 ## Tech Stack
 
-- HTML
-- CSS
-- JavaScript
-- Tailwind CSS
-- Capacitor
-- Android
-- Firebase Authentication
-- Cloud Firestore
-- Firebase Cloud Messaging
-- Supabase
+- JavaScript (ES modules), HTML, Tailwind CSS 3
+- Vite (build and dev server), Capacitor 7 (Android)
+- Firebase Authentication and Cloud Firestore (Firebase JS SDK from npm)
+- Supabase (home-screen announcements)
+- Vitest (unit tests), ESLint, Prettier
 
 ---
 
@@ -37,26 +32,25 @@ This was built as a capstone project and has since been approved by SVFMPC manag
 
 ```
 SVConnect/
-├── android/               # Capacitor-generated native Android project
-│   └── app/
-│       ├── google-services.json          # real Firebase config, gitignored
-│       └── google-services.json.example  # placeholder, safe to commit
-├── keystore/               # Android signing key 
-├── public/                 # compiled CSS + web manifest
-├── www/                     # the actual app
+├── android/                 # Capacitor-generated native Android project
+├── scripts/
+│   └── seed-firestore.mjs   # fills a Firestore project with fictional test data
+├── tests/                   # Vitest unit tests
+├── www/                     # app source (Vite root)
 │   ├── index.html           # login
 │   ├── register.html
-│   ├── app.html               # shell for the logged-in app
+│   ├── app.html             # shell for the logged-in app
+│   ├── styles.css           # Tailwind + Font Awesome, compiled by Vite
+│   ├── public/img/          # images, copied as-is into the build
 │   └── js/
-│       ├── app.js             # route table
-│       ├── login.js
-│       ├── screens/           # one file per screen
-│       └── services/
-│           ├── firebase.js                 # Firebase init
-│           ├── firebaseFunctions.js         # Firestore reads/writes
-│           ├── firebase.config.example.js
-│           └── supabase.config.example.js
-├── capacitor.config.json
+│       ├── app.js           # hash router
+│       ├── login.js         # registration, login, password reset
+│       ├── screens/         # one file per screen (render + init)
+│       ├── lib/             # pure logic: loan rules, MPIN hashing (unit tested)
+│       └── services/        # Firebase, Firestore queries, Supabase
+├── .env.example             # copy to .env and fill in
+├── vite.config.js
+├── capacitor.config.json    # webDir: dist (the Vite build output)
 └── package.json
 ```
 
@@ -64,19 +58,26 @@ SVConnect/
 
 ## Running it locally
 
-You'll need Node.js.
+You'll need Node.js 20 or newer.
 
 ```bash
 npm install
+cp .env.example .env    # then fill in your Firebase and Supabase values
+npm run dev             # http://localhost:5503
 ```
 
-For UI work, the app was developed by just serving `www/index.html` with VS Code's Live Server extension (port 5503, see `.vscode/settings.json`). Capacitor plugins like Camera or Push Notifications won't work in a plain browser preview — those need the native build.
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Dev server with hot reload |
+| `npm run build` | Production build into `dist/` |
+| `npm run preview` | Serve the production build |
+| `npm test` | Run the unit tests |
+| `npm run lint` | ESLint |
+| `npm run format` | Prettier |
+| `npm run android` | Build and copy into the Android project |
+| `npm run seed` | Write fictional test data to Firestore (see below) |
 
-Tailwind is loaded via CDN in the HTML, so no build step is required to run the app. If you're editing styles and want the compiled stylesheet updated too:
-
-```bash
-npx @tailwindcss/cli -i <input.css> -o public/output.css --watch
-```
+Capacitor plugins like Push Notifications only work in the native build, not in the browser.
 
 ---
 
@@ -89,9 +90,9 @@ You need a JDK (21 — Capacitor 7's Android library won't compile on 17) and th
    ```properties
    sdk.dir=C:\\path\\to\\Android\\Sdk
    ```
-3. After any change under `www/`, sync it into the native project:
+3. Build the web app and sync it into the native project:
    ```bash
-   npx cap sync android
+   npm run android
    ```
 4. Build:
    ```bash
@@ -107,15 +108,14 @@ A release build additionally needs a signing keystore referenced from `android/a
 
 ## Firebase / Supabase / OneSignal setup
 
-`www/js/services/firebase.js` initializes Firebase Auth and Firestore. `android/app/google-services.json` does the same on the native side for Cloud Messaging. To point this at your own project instead of the cooperative's:
+The web app reads its Firebase and Supabase settings from `.env` (see `.env.example`). Firebase web config isn't secret; access is controlled by Firestore Security Rules.
 
-1. Create a Firebase project, enable Email/Password auth and Firestore.
-2. Copy the shape from `firebase.config.example.js` into `firebase.js` with your own values.
-3. Download your own `google-services.json` from Firebase's Android app settings and drop it in `android/app/` (there's a `.example` version showing the expected shape).
-4. If you need the Firestore composite indexes, `firebase deploy --only firestore:indexes` using `firestore.indexes.json`.
-5. For push notifications, create your own OneSignal app and swap the `onesignal_app_id` in `AndroidManifest.xml`.
+1. Create a Firebase project, enable Email/Password sign-in, and create a Firestore database.
+2. Put the web app config in `.env`.
+3. Seed test data: Project settings → Service accounts → Generate new private key, save it as `serviceAccountKey.json` in the repo root (gitignored), then run `npm run seed`. Register in the app with Member ID 100001, 100002 or 100003. The script refuses to write to any project except the one named in it.
+4. For Android push notifications, download your own `google-services.json` into `android/app/` and set your own `onesignal_app_id` in `AndroidManifest.xml`.
 
-The announcement banner on the home screen pulls from a Supabase table (`www/js/screens/home.js`) — `supabase.config.example.js` shows what to fill in for your own Supabase project.
+The home-screen announcement comes from a Supabase `announcements` table. If the Supabase variables are empty, the banner keeps its default content.
 
 ---
 

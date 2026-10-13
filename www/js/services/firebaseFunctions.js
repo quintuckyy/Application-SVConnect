@@ -1,5 +1,6 @@
 import { db } from "./firebase.js";
-import { doc, collection, addDoc, getDoc, getDocs, query, where, updateDoc, deleteField, orderBy  } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { mpinMatches } from "../lib/mpin.js";
+import { doc, collection, addDoc, getDoc, getDocs, query, where, updateDoc, deleteField, orderBy  } from "firebase/firestore";
 
 export async function getLoanProducts(loanID) {
     const loanRef = doc(db, "loanProducts", loanID)
@@ -130,6 +131,14 @@ export async function deleteUserAcc(memberID) {
     })
     return deleteAcc
 }
+// Check an MPIN against the member's stored salted hash
+export async function verifyMPIN(memberID, inputMPIN) {
+    const memberSnap = await getDoc(doc(db, "Members", memberID));
+    if (!memberSnap.exists()) return false;
+    const { mpinHash, mpinSalt } = memberSnap.data();
+    return mpinMatches(inputMPIN, mpinHash, mpinSalt);
+}
+
 //date convertion
 export function formatDate(date) {
     const formattedDate = date.toDate().toLocaleDateString("en-US", {

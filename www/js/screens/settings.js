@@ -1,7 +1,6 @@
 import { auth } from "../services/firebase.js";
-import { onAuthStateChanged, updatePassword, reauthenticateWithCredential, EmailAuthProvider, signOut, deleteUser } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { getMemberID, getMemberRef, updateName, deleteUserAcc, createNotification, showSpinner, hideSpinner, showSuccess } from "../services/firebaseFunctions.js";
-import { verifyMPIN } from "../login.js";
+import { onAuthStateChanged, updatePassword, reauthenticateWithCredential, EmailAuthProvider, signOut, deleteUser } from "firebase/auth";
+import { getMemberID, getMemberRef, updateName, deleteUserAcc, createNotification, showSpinner, hideSpinner, showSuccess, verifyMPIN } from "../services/firebaseFunctions.js";
 
 export function Settings() {
     return`

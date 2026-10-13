@@ -1,7 +1,6 @@
-import { auth, db } from "../services/firebase.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import { auth } from "../services/firebase.js";
+import { onAuthStateChanged } from "firebase/auth";
 import { getMemberID, getMemberRef, getSavingsRef, getApprovedLoan, getPaymentRef, showSpinner, hideSpinner } from "../services/firebaseFunctions.js";
-import { doc, updateDoc, addDoc, collection, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 export function LoanOverview() {
     return`
@@ -397,15 +396,8 @@ function initPullToRefresh() {
         if (pullDistance > pullThreshold && window.scrollY === 0) {
             indicator.style.transform = 'translateY(10px)';
             indicator.style.opacity = '1';
-            
-            try {
-                // Refresh the page
-                await refreshHomePage();
-            } catch (error) {
-                console.error('Refresh failed:', error);
-            }
-            
-            // Hide indicator after refresh, then reload
+
+            // Hide the indicator, then reload the page to fetch fresh loan data
             setTimeout(() => {
                 indicator.style.transform = 'translateY(-100px)';
                 indicator.style.opacity = '0';
