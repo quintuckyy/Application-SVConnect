@@ -267,9 +267,9 @@ export function initLoanOverview() {
           interestRate: `${Number(loanDoc.interestRate * 100).toFixed(2)}%p.a.`,
           monthlyPay: `₱${Number(loanDoc.monthlyPayment).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
           totalPaid: `₱${Number(loanDoc.totalPaid).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-          penalty: `₱${Number(loanDoc.penalties).toFixed(2)}`,
-          savingsBuildUp: `₱${Number(savingsDoc.savingsBuildUp).toFixed(2)}`,
-          shareCapitalBuildUp: `₱${Number(savingsDoc.capitalBuildUp).toFixed(2)}`,
+          penalty: `₱${Number(loanDoc.penalties).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          savingsBuildUp: `₱${Number(savingsDoc.savingsBuildUp).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          shareCapitalBuildUp: `₱${Number(savingsDoc.capitalBuildUp).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
           principal: `₱${Number(loanDoc.principal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
           payments: loanDoc.dueDateIndex,
           monthsRemaining: loanDoc.monthsRemaining,
@@ -432,51 +432,3 @@ function initPullToRefresh() {
     currentY = 0;
   });
 }
-/*async function checkCompletion(memberID, loanID) {
-    try {
-        const loanRef = doc(db, "Members", memberID, "approvedLoans", loanID);
-        const completedRef = doc(db, "Members", memberID, "completedLoans", loanID);
-        const loanSnap = await getDoc(loanRef);
-        const loanDoc = await getApprovedLoan(memberID);
-
-        if (loanSnap.data()?.loanStatus === "Completed") {
-            return; // Exit early - already processed
-        }
-
-        await updateDoc(loanRef, {
-            loanStatus: "Completed",
-            monthInterest: 0.0,
-            monthlyPayment: 0.0,
-            principalBalance: 0.0,
-        })
-
-        await setDoc(completedRef, {
-            ...loanSnap.data(),
-            status: "Completed",
-            completionDate: new Date()
-        })
-
-        await createNotification(memberID,
-            "Loan Fully Paid!",
-            `🎉 Congratulations! Your ${loanDoc.loanType} is now fully paid and officially completed. Thank you for your consistent payments.`,
-            "loanCompleted"
-        )
-
-        // delete loan application (1 doc, but ID ≠ loanID)
-        const appCol = collection(db, "Members", memberID, "loanApplications");
-        const appQ = query(appCol, where("loanID", "==", loanID));
-        const appSnap = await getDocs(appQ);
-        appSnap.forEach(a => deleteDoc(doc(db, "Members", memberID, "loanApplications", a.id)));
-
-        // delete payment history (many docs)
-        const payCol = collection(db, "Members", memberID, "paymentHistory");
-        const payQ = query(payCol, where("loanID", "==", loanID));
-        const paySnap = await getDocs(payQ);
-        paySnap.forEach(p => deleteDoc(doc(db, "Members", memberID, "paymentHistory", p.id)));
-
-        await deleteDoc(loanRef);
-
-    } catch (err) {
-        console.log(err)
-    }
-}*/

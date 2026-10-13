@@ -4,6 +4,7 @@ import { updatePassword, reauthenticateWithCredential, EmailAuthProvider, signOu
 import { getMemberID, getMemberRef, updateName, createNotification } from "../services/firebaseFunctions.js";
 import { showSpinner, hideSpinner, showSuccess, showError } from "../services/ui.js";
 import { deleteMyAccount } from "../services/api.js";
+import { askForInput, MPIN_FIELD } from "../services/dialog.js";
 
 export function Settings() {
   return `
@@ -277,25 +278,25 @@ async function changePassword(user) {
 async function deleteAccount(memberID) {
   const user = auth.currentUser;
   try {
-    //authenticate user first for security
-    const currentPassword = prompt("Please enter your current password to confirm:");
-    if (!currentPassword) {
-      alert("Current Password is required to proceed.");
-      return;
-    }
-
-    const credential = EmailAuthProvider.credential(user.email, currentPassword);
-    await reauthenticateWithCredential(user, credential);
-
-    const userInputMPIN = prompt("Please enter your MPIN to continue:");
-    if (!userInputMPIN) {
-      alert("MPIN is required to proceed.");
-      return;
-    }
+    const input = await askForInput({
+      title: "Confirm account deletion",
+      message:
+        "Enter your password and MPIN to delete your SVConnect login. Your cooperative membership is not affected.",
+      fields: [
+        { name: "password", label: "Current password", type: "password", autocomplete: "current-password" },
+        MPIN_FIELD,
+      ],
+      submitLabel: "Delete my account",
+    });
+    if (!input) return;
 
     showSpinner();
+    // Firebase requires a recent sign-in before deleting a login
+    const credential = EmailAuthProvider.credential(user.email, input.password);
+    await reauthenticateWithCredential(user, credential);
+
     // Checks the MPIN, unlinks the login from the member record, then deletes the login
-    await deleteMyAccount(memberID, userInputMPIN.trim());
+    await deleteMyAccount(memberID, input.mpin);
 
     hideSpinner();
     showSuccess("Your account has been deleted successfully. Please Log-in");

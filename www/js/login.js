@@ -1,6 +1,7 @@
 import { auth, db } from "./services/firebase.js";
 import { getMemberID } from "./services/firebaseFunctions.js";
 import { checkMemberId, linkMemberAccount, verifyPasswordResetMpin } from "./services/api.js";
+import { askForInput, MPIN_FIELD } from "./services/dialog.js";
 import {
   createUserWithEmailAndPassword,
   deleteUser,
@@ -191,10 +192,7 @@ if (loginUser) {
 
           //mark notification as sent
           await updateDoc(memberRef, { firstLoginNotificationSent: true });
-          console.log("First login notification saved!");
         }
-      } else {
-        console.log("Member document not found for email:", user.email);
       }
 
       document.getElementById("logInSpinner").classList.remove("hidden");
@@ -214,27 +212,26 @@ if (loginUser) {
 if (forgotBtn) {
   forgotBtn.addEventListener("click", async (e) => {
     e.preventDefault();
-    // asks for email first, this is needed to get the id
-    const email = prompt("Enter your email:");
-    if (!email) return;
-
-    const userInputMPIN = prompt("Please enter your MPIN to continue:");
-    if (!userInputMPIN) {
-      alert("MPIN is required to proceed.");
-      return;
-    }
+    const input = await askForInput({
+      title: "Reset your password",
+      message: "Enter the email you registered with and your MPIN. We'll email you a link to set a new password.",
+      fields: [{ name: "email", label: "Email address", type: "email", autocomplete: "email" }, MPIN_FIELD],
+      submitLabel: "Send reset link",
+    });
+    if (!input) return;
+    const { email, mpin } = input;
 
     try {
       // Checked on the server when Cloud Functions are on, with a lockout after 5 wrong tries.
       // The same message is shown for an unknown email and a wrong MPIN.
-      await verifyPasswordResetMpin(email.trim(), userInputMPIN.trim());
+      await verifyPasswordResetMpin(email, mpin);
     } catch (err) {
       alert(err.message);
       return;
     }
 
     try {
-      await sendPasswordResetEmail(auth, email.trim());
+      await sendPasswordResetEmail(auth, email);
       window.showSuccessMessage("Password reset email sent! Check your inbox.");
     } catch (err) {
       console.error(err);

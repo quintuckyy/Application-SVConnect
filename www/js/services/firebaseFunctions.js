@@ -138,7 +138,6 @@ export async function createNotification(memberID, title, message, type) {
       createdAt: new Date(),
       seen: false,
     });
-    console.log("Notification created:", type);
   } catch (err) {
     console.error("Error creating notification:", err);
   }
