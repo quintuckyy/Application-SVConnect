@@ -4,7 +4,7 @@
 
 SVConnect is the member-facing mobile app for St. Vincent Ferrer Multi-Purpose Cooperative (SVFMPC) in Romblon. Members can check their savings, track loan applications, review transaction history, and see cooperative announcements from their phone instead of having to go to the office for every inquiry. It pairs with a separate web admin dashboard that staff use to manage member records.
 
-This was built as a capstone project and has since been approved by SVFMPC management for turnover.
+It was built as a capstone project by Quinn Agas and Neil Patrick Atienza and has since been approved by SVFMPC management for turnover. See [Credits](#credits).
 
 ## Screenshots
 
@@ -210,4 +210,12 @@ SVConnect Mobile Application is a member-facing app developed as a capstone proj
 
 ## Project Status
 
-Completed as a capstone project and approved by St. Vincent Cooperative management for turnover. Further improvements may include production package naming, automated testing, CI/CD release builds, and offline support.
+Completed as a capstone project and approved by St. Vincent Cooperative management for turnover. This repository has since added server-side validation, Security Rules, automated tests and CI. Further improvements may include production package naming, signed release builds, and offline support.
+
+---
+
+## Credits
+
+SVConnect was built as a capstone project by **Quinn Agas** and **Neil Patrick Atienza** for St. Vincent Ferrer Multi-Purpose Cooperative.
+
+This repository is Quinn Agas's continuation of that project. The original application was imported in the first commit; the changes since then (the Vite build, Cloud Functions and Security Rules, the test suites and CI) are listed in the commit history.
