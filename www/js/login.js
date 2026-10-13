@@ -1,6 +1,6 @@
 import { auth, db } from "./services/firebase.js";
 import { getMemberID } from "./services/firebaseFunctions.js";
-import { checkMemberId, linkMemberAccount, verifyPasswordResetMpin } from "./services/api.js";
+import { checkMemberId, linkMemberAccount, passwordResetChecksMpin, verifyPasswordResetMpin } from "./services/api.js";
 import { askForInput, MPIN_FIELD } from "./services/dialog.js";
 import {
   createUserWithEmailAndPassword,
@@ -214,8 +214,13 @@ if (forgotBtn) {
     e.preventDefault();
     const input = await askForInput({
       title: "Reset your password",
-      message: "Enter the email you registered with and your MPIN. We'll email you a link to set a new password.",
-      fields: [{ name: "email", label: "Email address", type: "email", autocomplete: "email" }, MPIN_FIELD],
+      message: passwordResetChecksMpin
+        ? "Enter the email you registered with and your MPIN. We'll email you a link to set a new password."
+        : "Enter the email you registered with. We'll email you a link to set a new password.",
+      fields: [
+        { name: "email", label: "Email address", type: "email", autocomplete: "email" },
+        ...(passwordResetChecksMpin ? [MPIN_FIELD] : []),
+      ],
       submitLabel: "Send reset link",
     });
     if (!input) return;
