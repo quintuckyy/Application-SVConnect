@@ -4,7 +4,7 @@ import { getMemberID, getTransacRef, formatDate, showSpinner, hideSpinner } from
 import { updateDoc, doc, getDoc } from "firebase/firestore";
 
 export function Transactions() {
-    return`
+  return `
     <!-- TOP NAV -->
     <nav class="bg-gradient-to-r from-green-800 to-emerald-700 shadow-md sticky top-0 z-10">
         <div class="h-16 px-3 flex items-center justify-between">
@@ -116,51 +116,51 @@ export function Transactions() {
                 </div>
             </div>
     </div>
-    `
+    `;
 }
 
 export function initTransactions() {
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            try {
-                showSpinner();
-                const transactionEmptyState = document.getElementById('transactionEmptyState');
-                const transacBody = document.getElementById('transacBody');
-                const memberID = await getMemberID(user);
-                const transacSnap = await getTransacRef(memberID);
-                hideSpinner();
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      try {
+        showSpinner();
+        const transactionEmptyState = document.getElementById("transactionEmptyState");
+        const transacBody = document.getElementById("transacBody");
+        const memberID = await getMemberID(user);
+        const transacSnap = await getTransacRef(memberID);
+        hideSpinner();
 
-                if (!transacSnap || transacSnap.length === 0) {
-                    transactionEmptyState.classList.remove("hidden")
-                    transacBody.classList.add("hidden")
-                    return
-                }
-
-                transactionEmptyState.classList.add("hidden")
-                transacBody.classList.remove("hidden")
-
-                renderTransac(memberID)
-            } catch (err) {
-                console.log(err)
-            }
+        if (!transacSnap || transacSnap.length === 0) {
+          transactionEmptyState.classList.remove("hidden");
+          transacBody.classList.add("hidden");
+          return;
         }
-    })
+
+        transactionEmptyState.classList.add("hidden");
+        transacBody.classList.remove("hidden");
+
+        renderTransac(memberID);
+      } catch (err) {
+        console.log(err);
+      }
+    }
+  });
 }
 
 async function renderTransac(memberID) {
-    try {
-        const transacBody = document.getElementById('transacBody');
-        transacBody.innerHTML = ``;
-        const transacSnap = await getTransacRef(memberID);
+  try {
+    const transacBody = document.getElementById("transacBody");
+    transacBody.innerHTML = ``;
+    const transacSnap = await getTransacRef(memberID);
 
-        transacSnap.forEach(transac => {
-            const formattedDate = transac.createdAt.toDate().toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric"
-            })
-            const transacContainer = document.createElement('div')
-            transacContainer.innerHTML = `
-            <div onclick="openTransac('${transac.id}')" id="trans-${transac.id}" class="${transac.seen === false ? 'bg-gray-200 font-bold' : ''} mb-2 rounded-2xl shadow-sm border border-gray-200 p-4 flex gap-3">
+    transacSnap.forEach((transac) => {
+      const formattedDate = transac.createdAt.toDate().toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+      const transacContainer = document.createElement("div");
+      transacContainer.innerHTML = `
+            <div onclick="openTransac('${transac.id}')" id="trans-${transac.id}" class="${transac.seen === false ? "bg-gray-200 font-bold" : ""} mb-2 rounded-2xl shadow-sm border border-gray-200 p-4 flex gap-3">
                 
                 <!-- content -->
                 <div class="flex-1 min-w-0">
@@ -168,64 +168,63 @@ async function renderTransac(memberID) {
                     <h2 class="text-sm font-bold text-gray-900 truncate">${transac.title}</h2>
                     <div class="flex items-center gap-2 shrink-0">
                         <span class="text-[11px] text-gray-500">${formattedDate}</span>
-                        <span id="dot-${transac.id}" class="w-2 h-2 rounded-full ${transac.seen === false ? 'bg-emerald-600 font-semibold' : ''}"></span>
+                        <span id="dot-${transac.id}" class="w-2 h-2 rounded-full ${transac.seen === false ? "bg-emerald-600 font-semibold" : ""}"></span>
                     </div>
                 </div>
 
                 <p class="text-xs text-gray-600 mt-1 leading-snug">${transac.message}</p>
                 </div>
             </div>
-            `
-            transacBody.appendChild(transacContainer);
-        })
+            `;
+      transacBody.appendChild(transacContainer);
+    });
 
-        window.openTransac = async function(transacID) {
-            const dot = document.getElementById(`dot-${transacID}`)
-            const trans = document.getElementById(`trans-${transacID}`)
-            try {
-                const loanRef = doc(db, "Members", memberID, "Transactions", transacID)
-                const querySnapshot = await getDoc(loanRef);
-                await updateDoc(loanRef, {seen : true})
-                dot.classList.remove('bg-emerald-600');
-                trans.classList.remove("bg-gray-200", "font-bold");
+    window.openTransac = async function (transacID) {
+      const dot = document.getElementById(`dot-${transacID}`);
+      const trans = document.getElementById(`trans-${transacID}`);
+      try {
+        const loanRef = doc(db, "Members", memberID, "Transactions", transacID);
+        const querySnapshot = await getDoc(loanRef);
+        await updateDoc(loanRef, { seen: true });
+        dot.classList.remove("bg-emerald-600");
+        trans.classList.remove("bg-gray-200", "font-bold");
 
-                document.getElementById('notification-detail-overlay').classList.remove('hidden');
-                const createdAt = querySnapshot.data().createdAt.toDate();
-                const formattedTime = createdAt.toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                    hour12: true     // 12-hour format with AM/PM
-                });
+        document.getElementById("notification-detail-overlay").classList.remove("hidden");
+        const createdAt = querySnapshot.data().createdAt.toDate();
+        const formattedTime = createdAt.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true, // 12-hour format with AM/PM
+        });
 
-                const userData = {
-                    title: querySnapshot.data().title,
-                    dateTime: `${formatDate(querySnapshot.data().createdAt)} • ${formattedTime}`,
-                    message: querySnapshot.data().message,
-                    paymentDate: formatDate(querySnapshot.data().paymentDate),
-                    paymentAmt: `₱${querySnapshot.data().amount.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`,
-                    newBal: `₱${querySnapshot.data().newBal.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`
-                }
+        const userData = {
+          title: querySnapshot.data().title,
+          dateTime: `${formatDate(querySnapshot.data().createdAt)} • ${formattedTime}`,
+          message: querySnapshot.data().message,
+          paymentDate: formatDate(querySnapshot.data().paymentDate),
+          paymentAmt: `₱${querySnapshot.data().amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          newBal: `₱${querySnapshot.data().newBal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        };
 
-                document.querySelectorAll("[data-field]").forEach(el => {
-                    const field = el.dataset.field
-                    el.textContent = userData[field]
-                })
+        document.querySelectorAll("[data-field]").forEach((el) => {
+          const field = el.dataset.field;
+          el.textContent = userData[field];
+        });
 
-                document.getElementById("closeBtn").addEventListener('click', function(e) {
-                    document.getElementById('notification-detail-overlay').classList.add('hidden');
-                })
+        document.getElementById("closeBtn").addEventListener("click", function (e) {
+          document.getElementById("notification-detail-overlay").classList.add("hidden");
+        });
 
-                document.getElementById('notification-detail-overlay').addEventListener('click', function(e) {
-                    if (e.target === this) {
-                        document.getElementById('notification-detail-overlay').classList.add('hidden');
-                    }
-                });
-
-            } catch (err) {
-                console.log(err)
-            } 
-        }
-    } catch (err) {
-        console.log(err)
-    }
+        document.getElementById("notification-detail-overlay").addEventListener("click", function (e) {
+          if (e.target === this) {
+            document.getElementById("notification-detail-overlay").classList.add("hidden");
+          }
+        });
+      } catch (err) {
+        console.log(err);
+      }
+    };
+  } catch (err) {
+    console.log(err);
+  }
 }

@@ -19,7 +19,14 @@ const toNumber = (value) => (value === "" || value === null || value === undefin
  * @param {{minMonths: number, maxMonths: number}} input.termLimits - from loanProducts/{type}
  * @param {boolean} input.hasExistingApplication
  */
-export function validateLoanApplication({ monthlyIncome, loanAmount, loanTerm, shareCapital, termLimits, hasExistingApplication }) {
+export function validateLoanApplication({
+  monthlyIncome,
+  loanAmount,
+  loanTerm,
+  shareCapital,
+  termLimits,
+  hasExistingApplication,
+}) {
   const errors = [];
   const income = toNumber(monthlyIncome);
   const amount = toNumber(loanAmount);

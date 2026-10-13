@@ -66,16 +66,16 @@ cp .env.example .env    # then fill in your Firebase and Supabase values
 npm run dev             # http://localhost:5503
 ```
 
-| Command | What it does |
-| --- | --- |
-| `npm run dev` | Dev server with hot reload |
-| `npm run build` | Production build into `dist/` |
-| `npm run preview` | Serve the production build |
-| `npm test` | Run the unit tests |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier |
-| `npm run android` | Build and copy into the Android project |
-| `npm run seed` | Write fictional test data to Firestore (see below) |
+| Command           | What it does                                       |
+| ----------------- | -------------------------------------------------- |
+| `npm run dev`     | Dev server with hot reload                         |
+| `npm run build`   | Production build into `dist/`                      |
+| `npm run preview` | Serve the production build                         |
+| `npm test`        | Run the unit tests                                 |
+| `npm run lint`    | ESLint                                             |
+| `npm run format`  | Prettier                                           |
+| `npm run android` | Build and copy into the Android project            |
+| `npm run seed`    | Write fictional test data to Firestore (see below) |
 
 Capacitor plugins like Push Notifications only work in the native build, not in the browser.
 

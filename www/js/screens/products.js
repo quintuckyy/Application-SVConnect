@@ -1,5 +1,5 @@
 export function Products() {
-    return`
+  return `
     <!-- Header -->
     <div class="mb-6 bg-gradient-to-r from-green-800 to-emerald-700 text-white px-6 py-8 shadow-lg rounded-b-2xl">
         <div class="max-w-6xl mx-auto">
@@ -197,5 +197,5 @@ export function Products() {
     </div>
 
     <div class="h-20"></div>
-    `
+    `;
 }

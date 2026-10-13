@@ -3,7 +3,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { getLoanRef, getMemberID } from "../services/firebaseFunctions.js";
 
 export function LoanMenu() {
-    return`
+  return `
     <!-- NAV -->
     <nav class="p-4 flex items-center">
 
@@ -52,7 +52,7 @@ export function LoanMenu() {
       </div>
     </div>
   </div>
-    `
+    `;
 }
 
 export function initLoans() {
@@ -61,13 +61,19 @@ export function initLoans() {
       try {
         const memberID = await getMemberID(user);
         const loanSnap = await getLoanRef(memberID);
-        
+
         const applyLoanBtn = document.getElementById("applyLoanBtn");
-        
+
         if (!loanSnap.empty) {
           // Disable button if there's an existing loan
           applyLoanBtn.disabled = true;
-          applyLoanBtn.classList.remove("from-blue-600", "to-blue-500", "hover:shadow-lg", "hover:scale-[1.02]", "active:scale-95");
+          applyLoanBtn.classList.remove(
+            "from-blue-600",
+            "to-blue-500",
+            "hover:shadow-lg",
+            "hover:scale-[1.02]",
+            "active:scale-95",
+          );
           applyLoanBtn.classList.add("from-gray-400", "to-gray-400", "opacity-60", "cursor-not-allowed");
           applyLoanBtn.innerHTML = `
             <ion-icon name="lock-closed-outline" class="text-2xl"></ion-icon>
@@ -76,12 +82,12 @@ export function initLoans() {
         } else {
           // Enable button if no existing loan
           applyLoanBtn.addEventListener("click", () => {
-            location.hash = '#/loanType';
+            location.hash = "#/loanType";
           });
         }
       } catch (err) {
-        console.log(err)
+        console.log(err);
       }
     }
-  })
+  });
 }

@@ -1,5 +1,5 @@
 export function LoanType() {
-    return`
+  return `
     <div class="min-h-screen flex flex-col bg-white">
         <!-- TOP NAV -->
         <nav class="bg-gradient-to-r from-green-800 to-emerald-700 shadow-md sticky top-0 z-10">
@@ -29,11 +29,11 @@ export function LoanType() {
           </ul>
         </div>
     </div>
-    `
+    `;
 }
 
 function loanOption(id, label, icon) {
-    return`
+  return `
       <li>
         <div onclick="openLoanForm('${id}')"
            class="flex items-center rounded-lg px-4 py-3 sm:px-6 sm:py-4 justify-between
@@ -47,9 +47,9 @@ function loanOption(id, label, icon) {
           <span class="text-xl sm:text-2xl text-white">&#8250;</span>
         </div>
       </li>
-    `
+    `;
 }
 
 window.openLoanForm = function (loanID) {
-  location.hash = `#/loan-application?loan=${loanID}`
-}
+  location.hash = `#/loan-application?loan=${loanID}`;
+};

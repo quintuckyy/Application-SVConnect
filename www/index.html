@@ -1,28 +1,34 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SVConnect · Sign in</title>
-  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-  <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
-  <link rel="stylesheet" href="./styles.css">
-</head>
-    <body class="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-700 flex items-center justify-center p-4">
-    
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SVConnect · Sign in</title>
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body
+    class="min-h-screen bg-gradient-to-br from-green-900 via-emerald-800 to-green-700 flex items-center justify-center p-4"
+  >
     <!-- LOGIN FORM -->
     <div id="loginContainer" class="w-full max-w-md">
       <!-- Spinner -->
-      <div id="logInSpinner" 
-        class="hidden fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-[9999]">
+      <div
+        id="logInSpinner"
+        class="hidden fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-[9999]"
+      >
         <div class="bg-white p-6 rounded-2xl shadow-2xl flex flex-col items-center">
           <div class="w-12 h-12 border-4 border-gray-200 border-t-green-600 rounded-full animate-spin"></div>
           <p class="mt-4 text-gray-700 font-medium">Signing you in...</p>
         </div>
       </div>
-      
+
       <!-- Success Message Overlay -->
-      <div id="successOverlay" class="hidden fixed inset-0 bg-black bg-opacity-70 z-[10000] items-center justify-center p-4">
+      <div
+        id="successOverlay"
+        class="hidden fixed inset-0 bg-black bg-opacity-70 z-[10000] items-center justify-center p-4"
+      >
         <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl transform transition-all">
           <div class="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-center">
             <div class="flex justify-center mb-3">
@@ -34,7 +40,10 @@
           </div>
           <div class="p-6 text-center">
             <p id="successMessage" class="text-gray-700 text-lg mb-6"></p>
-            <button id="closeSuccess" class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all duration-200 active:scale-95 transform">
+            <button
+              id="closeSuccess"
+              class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all duration-200 active:scale-95 transform"
+            >
               OK
             </button>
           </div>
@@ -45,7 +54,11 @@
         <!-- Header with Logo -->
         <div class="bg-gradient-to-r from-green-800 to-emerald-700 p-8 text-center">
           <div class="flex justify-center mb-4">
-            <img src="/img/stVincentLOGO.jpg" alt="St. Vincent Logo" class="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover">
+            <img
+              src="/img/stVincentLOGO.jpg"
+              alt="St. Vincent Logo"
+              class="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover"
+            />
           </div>
           <h1 class="text-2xl font-bold text-white mb-2">Welcome to SVConnect</h1>
           <p class="text-green-100 text-sm">Sign in to continue</p>
@@ -85,7 +98,11 @@
                   placeholder="Enter your password"
                   class="w-full pl-12 pr-12 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all"
                 />
-                <button type="button" id="toggleLoginPassword" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                <button
+                  type="button"
+                  id="toggleLoginPassword"
+                  class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
                   <i class="fas fa-eye"></i>
                 </button>
               </div>
@@ -98,13 +115,18 @@
             <button
               id="loginBtn"
               type="submit"
-              class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all duration-200 active:scale-95 transform">
+              class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all duration-200 active:scale-95 transform"
+            >
               <i class="fas fa-sign-in-alt mr-2"></i>Sign In
             </button>
 
             <!-- Forgot Password -->
             <div class="text-center">
-              <button id="forgotPass" type="button" class="text-sm text-green-700 hover:text-green-800 font-semibold hover:underline focus:outline-none transition-colors">
+              <button
+                id="forgotPass"
+                type="button"
+                class="text-sm text-green-700 hover:text-green-800 font-semibold hover:underline focus:outline-none transition-colors"
+              >
                 Forgot your password?
               </button>
             </div>
@@ -121,7 +143,10 @@
 
             <!-- Register Link -->
             <div class="text-center">
-              <a href="register.html" class="inline-flex items-center text-green-700 hover:text-green-800 font-bold text-sm hover:underline transition-colors">
+              <a
+                href="register.html"
+                class="inline-flex items-center text-green-700 hover:text-green-800 font-bold text-sm hover:underline transition-colors"
+              >
                 Create an account <i class="fas fa-arrow-right ml-2"></i>
               </a>
             </div>
@@ -129,28 +154,28 @@
         </div>
       </div>
     </div>
-        <script>
-        //success message overlay functionality
-        function showSuccessMessage(message) {
-          const successOverlay = document.getElementById('successOverlay');
-          const successMessage = document.getElementById('successMessage');
-          successMessage.textContent = message;
-          successOverlay.classList.remove('hidden');
-          successOverlay.classList.add('flex');
-        }
+    <script>
+      //success message overlay functionality
+      function showSuccessMessage(message) {
+        const successOverlay = document.getElementById("successOverlay");
+        const successMessage = document.getElementById("successMessage");
+        successMessage.textContent = message;
+        successOverlay.classList.remove("hidden");
+        successOverlay.classList.add("flex");
+      }
 
-        const closeSuccess = document.getElementById('closeSuccess');
-        if (closeSuccess) {
-          closeSuccess.addEventListener('click', () => {
-            const successOverlay = document.getElementById('successOverlay');
-            successOverlay.classList.add('hidden');
-            successOverlay.classList.remove('flex');
-          });
-        }
+      const closeSuccess = document.getElementById("closeSuccess");
+      if (closeSuccess) {
+        closeSuccess.addEventListener("click", () => {
+          const successOverlay = document.getElementById("successOverlay");
+          successOverlay.classList.add("hidden");
+          successOverlay.classList.remove("flex");
+        });
+      }
 
-        // Make showSuccessMessage available globally
-        window.showSuccessMessage = showSuccessMessage;
-      </script>
-      <script type="module" src="js/login.js"></script>
-    </body>
+      // Make showSuccessMessage available globally
+      window.showSuccessMessage = showSuccessMessage;
+    </script>
+    <script type="module" src="js/login.js"></script>
+  </body>
 </html>

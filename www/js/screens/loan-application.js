@@ -1,11 +1,27 @@
 import { auth, db } from "../services/firebase.js";
 import { onAuthStateChanged } from "firebase/auth";
-import { getLoanProducts, getMemberID, getMemberRef, getLoanRef, createNotification, showSpinner, hideSpinner, showSuccess } from "../services/firebaseFunctions.js";
+import {
+  getLoanProducts,
+  getMemberID,
+  getMemberRef,
+  getLoanRef,
+  createNotification,
+  showSpinner,
+  hideSpinner,
+  showSuccess,
+} from "../services/firebaseFunctions.js";
 import { collection, addDoc } from "firebase/firestore";
-import { validateLoanApplication, calculateAge, parseDateInput, addBusinessDays, MIN_BORROWER_AGE, MAX_BORROWER_AGE } from "../lib/loanRules.js";
+import {
+  validateLoanApplication,
+  calculateAge,
+  parseDateInput,
+  addBusinessDays,
+  MIN_BORROWER_AGE,
+  MAX_BORROWER_AGE,
+} from "../lib/loanRules.js";
 
 export function LoanApplication(loanType) {
-    return`
+  return `
     <nav class="h-17 md:flex md:items-center md:justify-between relative">
         <div class="flex justify-between items-center w-full">
             <div class="flex items-center m-4 ml-4 transition duration-200 transform active:scale-95">
@@ -382,233 +398,235 @@ export function LoanApplication(loanType) {
         </div>
         </div>
     </div>
-    `
+    `;
 }
 
 export async function initLoanApplication(loanType) {
-    try {
-        console.log(`Loan: ${loanType}`)
-        const termsLink = document.getElementById("termsLink");
-        const termsOverlay = document.getElementById("termsOverlay");
-        const closeTermsBtn = document.getElementById("closeTermsBtn");
-        const acceptTermsBtn = document.getElementById("acceptTermsBtn");
-        const termsCheckbox = document.getElementById("terms");
+  try {
+    console.log(`Loan: ${loanType}`);
+    const termsLink = document.getElementById("termsLink");
+    const termsOverlay = document.getElementById("termsOverlay");
+    const closeTermsBtn = document.getElementById("closeTermsBtn");
+    const acceptTermsBtn = document.getElementById("acceptTermsBtn");
+    const termsCheckbox = document.getElementById("terms");
 
-        // Terms and Conditions modal handlers
-        termsLink.addEventListener("click", (e) => {
-            e.preventDefault();
-            termsOverlay.classList.remove("hidden");
-        });
+    // Terms and Conditions modal handlers
+    termsLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      termsOverlay.classList.remove("hidden");
+    });
 
-        closeTermsBtn.addEventListener("click", () => {
-            termsOverlay.classList.add("hidden");
-        });
+    closeTermsBtn.addEventListener("click", () => {
+      termsOverlay.classList.add("hidden");
+    });
 
-        acceptTermsBtn.addEventListener("click", () => {
-            termsCheckbox.checked = true;
-            termsOverlay.classList.add("hidden");
-        });
+    acceptTermsBtn.addEventListener("click", () => {
+      termsCheckbox.checked = true;
+      termsOverlay.classList.add("hidden");
+    });
 
-        termsOverlay.addEventListener("click", (e) => {
-            if (e.target === termsOverlay) {
-                termsOverlay.classList.add("hidden");
-            }
-        });
+    termsOverlay.addEventListener("click", (e) => {
+      if (e.target === termsOverlay) {
+        termsOverlay.classList.add("hidden");
+      }
+    });
 
-        const loanDetails = await getLoanProducts(loanType);
-        const nameID = document.getElementById("nameID");
-        const subBtn = document.getElementById("applicationForm");
-        const infoBtn = document.getElementById("viewLoanInfoBtn");
-        const overlay = document.getElementById("overlay");
-        const closeBtn = document.getElementById("closeBtn");
+    const loanDetails = await getLoanProducts(loanType);
+    const nameID = document.getElementById("nameID");
+    const subBtn = document.getElementById("applicationForm");
+    const infoBtn = document.getElementById("viewLoanInfoBtn");
+    const overlay = document.getElementById("overlay");
+    const closeBtn = document.getElementById("closeBtn");
 
-        document.getElementById("loanTitle").textContent = `St. Vincent ${loanDetails.loan}`
-        document.getElementById("loanImg").src = loanDetails.imgURL
+    document.getElementById("loanTitle").textContent = `St. Vincent ${loanDetails.loan}`;
+    document.getElementById("loanImg").src = loanDetails.imgURL;
 
-        setupAgeValidation();
+    setupAgeValidation();
 
-        console.log(`Type of Loan: ${loanDetails.loan}`)
-        console.log(`URL: ${loanDetails.imgURL}`)
-        
-        const loanSnap = await getLoanProducts(loanType)
-        const maxTrm = loanSnap.loanTerms.maxMonths
-        const minTrm = loanSnap.loanTerms.minMonths
-        document.getElementById("minMaxMonths").innerHTML = `Loan Term (Months ${minTrm}-${maxTrm}) *`
+    console.log(`Type of Loan: ${loanDetails.loan}`);
+    console.log(`URL: ${loanDetails.imgURL}`);
 
-        //function for loan INFO buttons 
-        infoBtn.addEventListener("click", async (e) =>{
-        e.preventDefault()
-        overlay.classList.remove("hidden");
-        });
+    const loanSnap = await getLoanProducts(loanType);
+    const maxTrm = loanSnap.loanTerms.maxMonths;
+    const minTrm = loanSnap.loanTerms.minMonths;
+    document.getElementById("minMaxMonths").innerHTML = `Loan Term (Months ${minTrm}-${maxTrm}) *`;
 
-        closeBtn.addEventListener("click", async (e) =>{
-        e.preventDefault()
-        overlay.classList.add("hidden");
-        });
+    //function for loan INFO buttons
+    infoBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      overlay.classList.remove("hidden");
+    });
 
-        overlay.addEventListener("click", (e) => {
-        if (e.target === overlay) overlay.classList.add("hidden");
-        });
+    closeBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      overlay.classList.add("hidden");
+    });
 
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                const memberID = await getMemberID(user);
-                const memberSnap = await getMemberRef(memberID)
-                document.getElementById("memID").value = memberID
-                document.getElementById("loanType").value = loanDetails.loan
-                document.getElementById("interestRate").value = loanDetails.interestRate
-                //pre fields in form
-                document.getElementById("permAddress").value = memberSnap.address
-                document.getElementById("presAddress").value = memberSnap.address
-                document.getElementById("dateOfBirth").value = memberSnap.birthDate.toDate().toLocaleDateString('en-CA');
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) overlay.classList.add("hidden");
+    });
 
-                if (nameID) {
-                    alert(memberID)
-                    nameID.textContent = `${memberID}`
-                }
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const memberID = await getMemberID(user);
+        const memberSnap = await getMemberRef(memberID);
+        document.getElementById("memID").value = memberID;
+        document.getElementById("loanType").value = loanDetails.loan;
+        document.getElementById("interestRate").value = loanDetails.interestRate;
+        //pre fields in form
+        document.getElementById("permAddress").value = memberSnap.address;
+        document.getElementById("presAddress").value = memberSnap.address;
+        document.getElementById("dateOfBirth").value = memberSnap.birthDate.toDate().toLocaleDateString("en-CA");
 
-                if (subBtn) {
-                    handleAppForm(memberID, loanType)
-                }
+        if (nameID) {
+          alert(memberID);
+          nameID.textContent = `${memberID}`;
+        }
 
-            } else {
-                alert("No user logged in!")
-            }
-        }) 
-    } catch (err) {
-        console.log(err)
-    }
+        if (subBtn) {
+          handleAppForm(memberID, loanType);
+        }
+      } else {
+        alert("No user logged in!");
+      }
+    });
+  } catch (err) {
+    console.log(err);
+  }
 }
 
 function domVal() {
   return {
-    branch : document.getElementById("branch").value,
-    memberID : document.getElementById("memID").value.trim(),
-    civilStatus : document.getElementById("civilStatus").value,
-    age : document.getElementById("age").value.trim(),
-    gender : document.getElementById("gender").value,
-    birthDate : document.getElementById("dateOfBirth").value,
-    permanentAddress : document.getElementById("permAddress").value.trim(),
-    presentAddress : document.getElementById("presAddress").value.trim(),
-    zipCode : document.getElementById("zipCode").value.trim(),
-    housingStatus : document.getElementById("housingStatus").value,
-    employmentType : document.getElementById("employmentType").value,
-    incomeSource : document.getElementById("incomeSource").value,
-    incomeReceived : document.getElementById("incomeReceived").value,
-    monthlyIncome : Number(document.getElementById("monthlyIncome").value),
-    loanAmount : Number(document.getElementById("loanAmount").value.trim()),
-    loanTerm : Number(document.getElementById("loanTerm").value.trim()),
-    interestRate : Number(document.getElementById("interestRate").value.trim()),
-    loanType : document.getElementById("loanType").value.trim()
-  }
+    branch: document.getElementById("branch").value,
+    memberID: document.getElementById("memID").value.trim(),
+    civilStatus: document.getElementById("civilStatus").value,
+    age: document.getElementById("age").value.trim(),
+    gender: document.getElementById("gender").value,
+    birthDate: document.getElementById("dateOfBirth").value,
+    permanentAddress: document.getElementById("permAddress").value.trim(),
+    presentAddress: document.getElementById("presAddress").value.trim(),
+    zipCode: document.getElementById("zipCode").value.trim(),
+    housingStatus: document.getElementById("housingStatus").value,
+    employmentType: document.getElementById("employmentType").value,
+    incomeSource: document.getElementById("incomeSource").value,
+    incomeReceived: document.getElementById("incomeReceived").value,
+    monthlyIncome: Number(document.getElementById("monthlyIncome").value),
+    loanAmount: Number(document.getElementById("loanAmount").value.trim()),
+    loanTerm: Number(document.getElementById("loanTerm").value.trim()),
+    interestRate: Number(document.getElementById("interestRate").value.trim()),
+    loanType: document.getElementById("loanType").value.trim(),
+  };
 }
 
 async function handleAppForm(memberID, loanType) {
-    const subBtn = document.getElementById("applicationForm");
-    document.getElementById("clearBtn").addEventListener("click", (e) => {
-        e.preventDefault();
-        const confirmed = confirm("⚠️ Clear all form data? This action cannot be undone.");
-        
-        if (confirmed) {
-            document.getElementById("applicationForm").reset();
-            location.reload();
-        }
-    });
-subBtn.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const formVal = domVal();
-        try {
-            const result = confirm(`Do you want to submit this Loan Application?`)
-            if (!result)return
-            showSpinner();
-            const memberSnap = await getMemberRef(memberID)
-            const loanDoc = await getLoanRef(memberID)
-            const loanSnap = await getLoanProducts(loanType)
+  const subBtn = document.getElementById("applicationForm");
+  document.getElementById("clearBtn").addEventListener("click", (e) => {
+    e.preventDefault();
+    const confirmed = confirm("⚠️ Clear all form data? This action cannot be undone.");
 
-            const errors = validateLoanApplication({
-                monthlyIncome: formVal.monthlyIncome,
-                loanAmount: formVal.loanAmount,
-                loanTerm: formVal.loanTerm,
-                shareCapital: memberSnap.shareCapital,
-                termLimits: loanSnap.loanTerms,
-                hasExistingApplication: !loanDoc.empty,
-            });
-            hideSpinner();
-            if (errors.length) {
-                if (!loanDoc.empty) document.getElementById("submitBtn").classList.add("disabled")
-                alert(errors.join("\n"))
-                return
-            }
+    if (confirmed) {
+      document.getElementById("applicationForm").reset();
+      location.reload();
+    }
+  });
+  subBtn.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formVal = domVal();
+    try {
+      const result = confirm(`Do you want to submit this Loan Application?`);
+      if (!result) return;
+      showSpinner();
+      const memberSnap = await getMemberRef(memberID);
+      const loanDoc = await getLoanRef(memberID);
+      const loanSnap = await getLoanProducts(loanType);
 
-            const dateApplied = new Date();
-            const deadlineDate = addBusinessDays(dateApplied, 3);
+      const errors = validateLoanApplication({
+        monthlyIncome: formVal.monthlyIncome,
+        loanAmount: formVal.loanAmount,
+        loanTerm: formVal.loanTerm,
+        shareCapital: memberSnap.shareCapital,
+        termLimits: loanSnap.loanTerms,
+        hasExistingApplication: !loanDoc.empty,
+      });
+      hideSpinner();
+      if (errors.length) {
+        if (!loanDoc.empty) document.getElementById("submitBtn").classList.add("disabled");
+        alert(errors.join("\n"));
+        return;
+      }
 
-            await addDoc(collection(db, "Members", memberID, "loanApplications"), {
-                ...formVal,
-                dateApplied: dateApplied,
-                status: "Pending"
-            });
-            
-            await createNotification(memberID,
-                "Loan Submitted",
-                `Your loan application has been submitted. Kindly visit our office between ${formatDate(dateApplied)} to ${formatDate(deadlineDate)} (3 business days) to complete the processing.
+      const dateApplied = new Date();
+      const deadlineDate = addBusinessDays(dateApplied, 3);
+
+      await addDoc(collection(db, "Members", memberID, "loanApplications"), {
+        ...formVal,
+        dateApplied: dateApplied,
+        status: "Pending",
+      });
+
+      await createNotification(
+        memberID,
+        "Loan Submitted",
+        `Your loan application has been submitted. Kindly visit our office between ${formatDate(dateApplied)} to ${formatDate(deadlineDate)} (3 business days) to complete the processing.
                  Please be advised that if you do not visit by the deadline, your application will not be processed further`,
-                "loanApplication"
-            )
-            showSuccess(`Your loan application has been submitted. Kindly visit our office between ${formatDate(dateApplied)} to ${formatDate(deadlineDate)} (3 business days) to complete the processing.`)
-            setTimeout(() => {
-                location.hash = '#/home';
-            }, 3000);
-        } catch (err) {
-            console.error("Loan application failed:", err)
-            hideSpinner();
-            alert("Your application could not be submitted. Check your connection and try again.")
-        }
-    })
+        "loanApplication",
+      );
+      showSuccess(
+        `Your loan application has been submitted. Kindly visit our office between ${formatDate(dateApplied)} to ${formatDate(deadlineDate)} (3 business days) to complete the processing.`,
+      );
+      setTimeout(() => {
+        location.hash = "#/home";
+      }, 3000);
+    } catch (err) {
+      console.error("Loan application failed:", err);
+      hideSpinner();
+      alert("Your application could not be submitted. Check your connection and try again.");
+    }
+  });
 }
 
 function setupAgeValidation() {
-    const ageInput = document.getElementById("age");
-    const dateOfBirthInput = document.getElementById("dateOfBirth");
-    
-    //calculate max date (18 years ago) and min date (80 years ago)
-    const today = new Date();
-    const maxDate = new Date(today.getFullYear() - MIN_BORROWER_AGE, today.getMonth(), today.getDate());
-    const minDate = new Date(today.getFullYear() - MAX_BORROWER_AGE, today.getMonth(), today.getDate());
-    
-    //set date input restrictions
-    dateOfBirthInput.max = maxDate.toISOString().split('T')[0];
-    dateOfBirthInput.min = minDate.toISOString().split('T')[0];
-    
-    //validate age matches birthdate
-    function validateAgeAndBirthdate() {
-        const age = parseInt(ageInput.value);
-        if (!age || !dateOfBirthInput.value) return;
+  const ageInput = document.getElementById("age");
+  const dateOfBirthInput = document.getElementById("dateOfBirth");
 
-        const calculatedAge = calculateAge(parseDateInput(dateOfBirthInput.value));
+  //calculate max date (18 years ago) and min date (80 years ago)
+  const today = new Date();
+  const maxDate = new Date(today.getFullYear() - MIN_BORROWER_AGE, today.getMonth(), today.getDate());
+  const minDate = new Date(today.getFullYear() - MAX_BORROWER_AGE, today.getMonth(), today.getDate());
 
-        if (calculatedAge !== age) {
-            alert(`Age ${age} does not match the birthdate. Calculated age is ${calculatedAge}.`);
-            dateOfBirthInput.value = "";
-            return false;
-        }
-        return true;
+  //set date input restrictions
+  dateOfBirthInput.max = maxDate.toISOString().split("T")[0];
+  dateOfBirthInput.min = minDate.toISOString().split("T")[0];
+
+  //validate age matches birthdate
+  function validateAgeAndBirthdate() {
+    const age = parseInt(ageInput.value);
+    if (!age || !dateOfBirthInput.value) return;
+
+    const calculatedAge = calculateAge(parseDateInput(dateOfBirthInput.value));
+
+    if (calculatedAge !== age) {
+      alert(`Age ${age} does not match the birthdate. Calculated age is ${calculatedAge}.`);
+      dateOfBirthInput.value = "";
+      return false;
     }
-    
-    //auto-calculate age from birthdate
-    dateOfBirthInput.addEventListener("change", function() {
-        if (this.value) {
-            ageInput.value = calculateAge(parseDateInput(this.value));
-        }
-    });
-    
-    //validate when age is entered
-    ageInput.addEventListener("change", validateAgeAndBirthdate);
-    dateOfBirthInput.addEventListener("blur", validateAgeAndBirthdate);
+    return true;
+  }
+
+  //auto-calculate age from birthdate
+  dateOfBirthInput.addEventListener("change", function () {
+    if (this.value) {
+      ageInput.value = calculateAge(parseDateInput(this.value));
+    }
+  });
+
+  //validate when age is entered
+  ageInput.addEventListener("change", validateAgeAndBirthdate);
+  dateOfBirthInput.addEventListener("blur", validateAgeAndBirthdate);
 }
 
 // Function to format date as "Month DD, YYYY"
 function formatDate(date) {
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return date.toLocaleDateString('en-US', options);
+  const options = { year: "numeric", month: "long", day: "numeric" };
+  return date.toLocaleDateString("en-US", options);
 }

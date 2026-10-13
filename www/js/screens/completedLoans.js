@@ -1,9 +1,16 @@
 import { auth } from "../services/firebase.js";
 import { onAuthStateChanged } from "firebase/auth";
-import { getMemberID, getMemberRef, getCompletedLoansRef, formatDate, showSpinner, hideSpinner } from "../services/firebaseFunctions.js";
+import {
+  getMemberID,
+  getMemberRef,
+  getCompletedLoansRef,
+  formatDate,
+  showSpinner,
+  hideSpinner,
+} from "../services/firebaseFunctions.js";
 
 export function CompletedLoans() {
-    return`
+  return `
         <div class="bg-gradient-to-r from-green-800 to-emerald-700 text-white px-4 pt-6 pb-8">
         <div class="flex items-center justify-between mb-6">
             <div class="flex items-center space-x-3">
@@ -52,50 +59,51 @@ export function CompletedLoans() {
             <p class="text-xs text-gray-400 mt-1">Completed loans will appear here</p>
         </div>
     </div>
-    `
+    `;
 }
 
 export function initCompletedLoans() {
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            try {
-                showSpinner();
-                const memberID = await getMemberID(user);
-                const docSnap = await getMemberRef(memberID);
-                
-                document.getElementById("memberName").textContent = docSnap.displayName
-                document.getElementById("memberId").textContent = memberID
-                document.getElementById("memberInitials").textContent = docSnap.displayName.split(' ').map(n => n[0]).join('')
-                hideSpinner();
-                renderCompletedLoans(memberID)
-                
-            } catch (err) {
-                console.log(err)
-            }
-        }
-    })
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      try {
+        showSpinner();
+        const memberID = await getMemberID(user);
+        const docSnap = await getMemberRef(memberID);
+
+        document.getElementById("memberName").textContent = docSnap.displayName;
+        document.getElementById("memberId").textContent = memberID;
+        document.getElementById("memberInitials").textContent = docSnap.displayName
+          .split(" ")
+          .map((n) => n[0])
+          .join("");
+        hideSpinner();
+        renderCompletedLoans(memberID);
+      } catch (err) {
+        console.log(err);
+      }
+    }
+  });
 }
 
 async function renderCompletedLoans(memberID) {
-    try {
-        
-        const loanCardBody = document.getElementById('loanCardBody')
-        const emptyState = document.getElementById('emptyState')
-        loanCardBody.innerHTML = ``
-        const completedLoanSnap = await getCompletedLoansRef(memberID)
+  try {
+    const loanCardBody = document.getElementById("loanCardBody");
+    const emptyState = document.getElementById("emptyState");
+    loanCardBody.innerHTML = ``;
+    const completedLoanSnap = await getCompletedLoansRef(memberID);
 
-        if (!completedLoanSnap || completedLoanSnap.length === 0) {
-            emptyState.classList.remove("hidden")
-            loanCardBody.classList.add("hidden")
-            return
-        }
+    if (!completedLoanSnap || completedLoanSnap.length === 0) {
+      emptyState.classList.remove("hidden");
+      loanCardBody.classList.add("hidden");
+      return;
+    }
 
-        emptyState.classList.add("hidden")
-        loanCardBody.classList.remove("hidden")
+    emptyState.classList.add("hidden");
+    loanCardBody.classList.remove("hidden");
 
-        completedLoanSnap.forEach(compLoan => {
-            const loanContainer = document.createElement('div')
-            loanContainer.innerHTML = `
+    completedLoanSnap.forEach((compLoan) => {
+      const loanContainer = document.createElement("div");
+      loanContainer.innerHTML = `
                 <div class="bg-white rounded-2xl shadow-lg overflow-hidden mb-4">
                     <div class="p-4">
                         <div class="flex items-start justify-between mb-3">
@@ -117,11 +125,11 @@ async function renderCompletedLoans(memberID) {
                             <div class="flex justify-between items-center">
                                 <div>
                                     <p class="text-xs text-gray-600 mb-0.5">Principal Amount</p>
-                                    <p class="text-lg font-bold text-gray-800">₱${Number(compLoan.totalLoan).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
+                                    <p class="text-lg font-bold text-gray-800">₱${Number(compLoan.totalLoan).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                                 </div>
                                 <div class="text-right">
                                     <p class="text-xs text-gray-600 mb-0.5">Total Paid</p>
-                                    <p class="text-lg font-bold text-green-700">₱${Number(compLoan.totalPaid).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
+                                    <p class="text-lg font-bold text-green-700">₱${Number(compLoan.totalPaid).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                                 </div>
                             </div>
                         </div>
@@ -141,17 +149,16 @@ async function renderCompletedLoans(memberID) {
                             </div>
                             <div>
                                 <p class="text-xs text-gray-500 mb-0.5">Interest Paid</p>
-                                <p class="font-semibold text-red-600">₱${Number(compLoan.totalInterest).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
+                                <p class="font-semibold text-red-600">₱${Number(compLoan.totalInterest).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                             </div>
                         </div>
                     </div>
                 </div>
-            `
-            loanCardBody.appendChild(loanContainer)
-            hideSpinner();
-        })
-
-    } catch (err) {
-        console.log(err)
-    }
+            `;
+      loanCardBody.appendChild(loanContainer);
+      hideSpinner();
+    });
+  } catch (err) {
+    console.log(err);
+  }
 }

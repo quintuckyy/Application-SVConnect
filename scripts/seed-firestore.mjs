@@ -27,7 +27,9 @@ function loadCredential() {
     const key = JSON.parse(readFileSync("serviceAccountKey.json", "utf8"));
     return { credential: cert(key), projectId: key.project_id };
   }
-  console.error("No credentials found. Save your service account key as serviceAccountKey.json in the repo root, or set GOOGLE_APPLICATION_CREDENTIALS.");
+  console.error(
+    "No credentials found. Save your service account key as serviceAccountKey.json in the repo root, or set GOOGLE_APPLICATION_CREDENTIALS.",
+  );
   process.exit(1);
 }
 
@@ -43,25 +45,29 @@ const db = getFirestore();
 // ---------- helpers ----------
 const ts = (date) => Timestamp.fromDate(date);
 const daysAgo = (n) => new Date(Date.now() - n * 86_400_000);
-const addMonths = (date, n) => { const d = new Date(date); d.setMonth(d.getMonth() + n); return d; };
+const addMonths = (date, n) => {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + n);
+  return d;
+};
 // The app shows dueDate entries as text and parses them with new Date(), e.g. "Nov 15, 2026"
 const dueText = (date) => date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 const round2 = (n) => Math.round(n * 100) / 100;
 
 // ---------- loan products (read by loan-application.js) ----------
 const loanProducts = {
-  personalLoan:        { loan: "Personal Loan",        interestRate: 0.12, loanTerms: { minMonths: 6,  maxMonths: 24 } },
-  educationalLoan:     { loan: "Educational Loan",     interestRate: 0.08, loanTerms: { minMonths: 6,  maxMonths: 12 } },
-  hospitalizationLoan: { loan: "Hospitalization Loan", interestRate: 0.06, loanTerms: { minMonths: 3,  maxMonths: 12 } },
-  motorcycleLoan:      { loan: "Motorcycle Loan",      interestRate: 0.14, loanTerms: { minMonths: 12, maxMonths: 36 } },
-  microFinanceLoan:    { loan: "Micro Finance Loan",   interestRate: 0.10, loanTerms: { minMonths: 3,  maxMonths: 12 } },
+  personalLoan: { loan: "Personal Loan", interestRate: 0.12, loanTerms: { minMonths: 6, maxMonths: 24 } },
+  educationalLoan: { loan: "Educational Loan", interestRate: 0.08, loanTerms: { minMonths: 6, maxMonths: 12 } },
+  hospitalizationLoan: { loan: "Hospitalization Loan", interestRate: 0.06, loanTerms: { minMonths: 3, maxMonths: 12 } },
+  motorcycleLoan: { loan: "Motorcycle Loan", interestRate: 0.14, loanTerms: { minMonths: 12, maxMonths: 36 } },
+  microFinanceLoan: { loan: "Micro Finance Loan", interestRate: 0.1, loanTerms: { minMonths: 3, maxMonths: 12 } },
 };
 for (const p of Object.values(loanProducts)) p.imgURL = "img/loan.png";
 
 // ---------- members (all fictional) ----------
 // Member IDs are the document IDs you enter on the registration screen.
 const members = {
-  "100001": {
+  100001: {
     displayName: "Juan Dela Cruz",
     address: "Brgy. Poblacion, Odiongan, Romblon",
     contact: "0917 000 0001",
@@ -70,7 +76,7 @@ const members = {
     shareCapital: 15000,
     createdAt: ts(daysAgo(400)),
   },
-  "100002": {
+  100002: {
     displayName: "Maria Santos",
     address: "Brgy. Tabing Dagat, Odiongan, Romblon",
     contact: "0917 000 0002",
@@ -79,7 +85,7 @@ const members = {
     shareCapital: 25000,
     createdAt: ts(daysAgo(900)),
   },
-  "100003": {
+  100003: {
     displayName: "Pedro Reyes",
     address: "Brgy. Libertad, Odiongan, Romblon",
     contact: "0917 000 0003",
@@ -112,7 +118,9 @@ function savingsAccount(memberId, balance, shares) {
 // Member 100002 has an active 12-month personal loan with 3 payments made.
 // TESTDATE is set to "now" because home.js and loan-overview.js use it as today's date.
 function activeLoan() {
-  const principal = 50000, months = 12, rate = 0.12;
+  const principal = 50000,
+    months = 12,
+    rate = 0.12;
   const monthlyInterest = round2((principal * rate) / 12);
   const monthlyPayment = round2(principal / months + monthlyInterest);
   const totalPayment = round2(monthlyPayment * months);
@@ -156,14 +164,24 @@ const { loan, payments } = activeLoan();
 
 // Subcollection documents, keyed by member ID → collection → doc ID.
 const subcollections = {
-  "100001": {
+  100001: {
     savingsAccount: { main: savingsAccount("100001", 12500, 150) },
     Transactions: {
-      t1: { title: "Savings Deposit", message: "₱2,500.00 was deposited to your Regular Savings account.", createdAt: ts(daysAgo(5)), seen: false },
-      t2: { title: "Share Capital", message: "₱1,000.00 was added to your share capital.", createdAt: ts(daysAgo(40)), seen: true },
+      t1: {
+        title: "Savings Deposit",
+        message: "₱2,500.00 was deposited to your Regular Savings account.",
+        createdAt: ts(daysAgo(5)),
+        seen: false,
+      },
+      t2: {
+        title: "Share Capital",
+        message: "₱1,000.00 was added to your share capital.",
+        createdAt: ts(daysAgo(40)),
+        seen: true,
+      },
     },
   },
-  "100002": {
+  100002: {
     savingsAccount: { main: savingsAccount("100002", 38200.5, 250) },
     approvedLoans: { "loan-2026-001": loan },
     paymentHistory: Object.fromEntries(payments.map((p, i) => [`pay-${i + 1}`, p])),
@@ -180,14 +198,30 @@ const subcollections = {
       },
     },
     Transactions: {
-      t1: { title: "Loan Payment Received", message: `Payment 3 of ₱${monthlyPaymentText()} was posted to your Personal Loan.`, createdAt: payments[2].createdAt, seen: false },
-      t2: { title: "Savings Deposit", message: "₱5,000.00 was deposited to your Regular Savings account.", createdAt: ts(daysAgo(20)), seen: true },
+      t1: {
+        title: "Loan Payment Received",
+        message: `Payment 3 of ₱${monthlyPaymentText()} was posted to your Personal Loan.`,
+        createdAt: payments[2].createdAt,
+        seen: false,
+      },
+      t2: {
+        title: "Savings Deposit",
+        message: "₱5,000.00 was deposited to your Regular Savings account.",
+        createdAt: ts(daysAgo(20)),
+        seen: true,
+      },
     },
     Notifications: {
-      n1: { title: "Loan Approved", message: "Your Personal Loan of ₱50,000.00 has been approved.", type: "loan", createdAt: ts(daysAgo(100)), seen: true },
+      n1: {
+        title: "Loan Approved",
+        message: "Your Personal Loan of ₱50,000.00 has been approved.",
+        type: "loan",
+        createdAt: ts(daysAgo(100)),
+        seen: true,
+      },
     },
   },
-  "100003": {
+  100003: {
     savingsAccount: { main: savingsAccount("100003", 1500, 50) },
   },
 };
@@ -202,7 +236,8 @@ for (const [id, data] of Object.entries(loanProducts)) writes.push({ path: `loan
 for (const [id, data] of Object.entries(members)) writes.push({ path: `Members/${id}`, data, merge: true });
 for (const [memberId, cols] of Object.entries(subcollections)) {
   for (const [col, docs] of Object.entries(cols)) {
-    for (const [docId, data] of Object.entries(docs)) writes.push({ path: `Members/${memberId}/${col}/${docId}`, data, merge: false });
+    for (const [docId, data] of Object.entries(docs))
+      writes.push({ path: `Members/${memberId}/${col}/${docId}`, data, merge: false });
   }
 }
 

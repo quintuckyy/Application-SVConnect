@@ -1,10 +1,17 @@
 import { auth, db } from "../services/firebase.js";
 import { onAuthStateChanged } from "firebase/auth";
-import { getMemberID, getNotifRef, formatDate, showSpinner, hideSpinner, showSuccess } from "../services/firebaseFunctions.js";
+import {
+  getMemberID,
+  getNotifRef,
+  formatDate,
+  showSpinner,
+  hideSpinner,
+  showSuccess,
+} from "../services/firebaseFunctions.js";
 import { updateDoc, doc, getDoc, deleteDoc } from "firebase/firestore";
 
 export function Notification() {
-    return`
+  return `
         <!-- TOP NAV (same palette as other screens) -->
         <nav class="bg-gradient-to-r from-green-800 to-emerald-700 shadow-md sticky top-0 z-10">
             <div class="h-16 px-3 flex items-center justify-between">
@@ -100,53 +107,52 @@ export function Notification() {
                 </div>
             </div>
         </div>
-    `
+    `;
 }
 
 export function initNotifications() {
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            try {
-                showSpinner();
-                const notifEmptyState = document.getElementById('notifEmptyState');
-                const notifBody = document.getElementById('notifBody');
-                const memberID = await getMemberID(user);
-                const notifSnap = await getNotifRef(memberID);
-                renderNotif(memberID)
-                hideSpinner();
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      try {
+        showSpinner();
+        const notifEmptyState = document.getElementById("notifEmptyState");
+        const notifBody = document.getElementById("notifBody");
+        const memberID = await getMemberID(user);
+        const notifSnap = await getNotifRef(memberID);
+        renderNotif(memberID);
+        hideSpinner();
 
-                if (!notifSnap || notifSnap.length === 0) {
-                    notifEmptyState.classList.remove("hidden")
-                    notifBody.classList.add("hidden")
-                    return
-                }
-
-                notifEmptyState.classList.add("hidden")
-                notifBody.classList.remove("hidden")
-
-            } catch (err) {
-                console.log(err)
-            }
+        if (!notifSnap || notifSnap.length === 0) {
+          notifEmptyState.classList.remove("hidden");
+          notifBody.classList.add("hidden");
+          return;
         }
-    })
+
+        notifEmptyState.classList.add("hidden");
+        notifBody.classList.remove("hidden");
+      } catch (err) {
+        console.log(err);
+      }
+    }
+  });
 }
 //everytime na may bagong notification malalagay itong code na to
 async function renderNotif(memberID) {
-    try {
-        const notifBody = document.getElementById('notifBody');
-        notifBody.innerHTML = ``;
-        const notifSnap = await getNotifRef(memberID);
+  try {
+    const notifBody = document.getElementById("notifBody");
+    notifBody.innerHTML = ``;
+    const notifSnap = await getNotifRef(memberID);
 
-        notifSnap.forEach(notif => {
-            const formattedDate = notif.createdAt.toDate().toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric"
-            })
-            const notifContainer = document.createElement('div')  
-            notifContainer.innerHTML = `
-            <div onclick="openNotif('${notif.id}')" id="notif-${notif.id}" class="${notif.seen === false ? 'bg-gray-200 font-bold' : ''} mb-2 bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex gap-3">
+    notifSnap.forEach((notif) => {
+      const formattedDate = notif.createdAt.toDate().toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+      const notifContainer = document.createElement("div");
+      notifContainer.innerHTML = `
+            <div onclick="openNotif('${notif.id}')" id="notif-${notif.id}" class="${notif.seen === false ? "bg-gray-200 font-bold" : ""} mb-2 bg-white rounded-2xl shadow-sm border border-gray-200 p-4 flex gap-3">
                 <!-- left icon -->
-                <div id="notifIcon-${notif.id}" class="${notif.seen === false ? 'bg-gray-200' : ''} w-11 h-11 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                <div id="notifIcon-${notif.id}" class="${notif.seen === false ? "bg-gray-200" : ""} w-11 h-11 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
                 <i class="fa-regular fa-bell text-emerald-700"></i>
                 </div>
 
@@ -156,7 +162,7 @@ async function renderNotif(memberID) {
                     <h2 class="text-sm font-bold text-gray-900 truncate">${notif.title}</h2>
                     <div class="flex items-center gap-2 shrink-0">
                         <span class="text-[11px] text-gray-500">${formattedDate}</span>
-                        <span id="dot-${notif.id}" class="w-2 h-2 rounded-full ${notif.seen === false ? 'bg-emerald-600 font-semibold' : ''}"></span>
+                        <span id="dot-${notif.id}" class="w-2 h-2 rounded-full ${notif.seen === false ? "bg-emerald-600 font-semibold" : ""}"></span>
                     </div>
                 </div>
                 <p class="text-xs text-gray-600 mt-1 leading-snug">${notif.message}</p>
@@ -165,107 +171,103 @@ async function renderNotif(memberID) {
                     <i class="fa-solid fa-trash text-sm"></i>
                 </button>
             </div>
-            `
-            notifBody.appendChild(notifContainer);
-        })
-        //mark all as read func
-        const markAllAsRead = document.getElementById("markAllAsRead")
-        markAllAsRead.onclick = async function () {
-        try {
-            const notifSnap = await getNotifRef(memberID);
+            `;
+      notifBody.appendChild(notifContainer);
+    });
+    //mark all as read func
+    const markAllAsRead = document.getElementById("markAllAsRead");
+    markAllAsRead.onclick = async function () {
+      try {
+        const notifSnap = await getNotifRef(memberID);
 
-            //update each notif doc
-            const updates = notifSnap.map(n =>
-                updateDoc(doc(db, "Members", memberID, "Notifications", n.id), {
-                    seen: true
-                })
-            );
+        //update each notif doc
+        const updates = notifSnap.map((n) =>
+          updateDoc(doc(db, "Members", memberID, "Notifications", n.id), {
+            seen: true,
+          }),
+        );
 
-            await Promise.all(updates);
+        await Promise.all(updates);
 
-            //remove green dots in UI
-            notifSnap.forEach(n => {
-                const dot = document.getElementById(`dot-${n.id}`);
-                const notifIcon = document.getElementById(`notifIcon-${n.id}`);
-                const card = document.getElementById(`notif-${n.id}`);
-                if (dot) {
-                    dot.classList.remove("bg-emerald-600");
-                    notifIcon.classList.remove("bg-gray-200");
-                    card.classList.remove("bg-gray-200", "font-bold");
-                }
-                    
-            });
+        //remove green dots in UI
+        notifSnap.forEach((n) => {
+          const dot = document.getElementById(`dot-${n.id}`);
+          const notifIcon = document.getElementById(`notifIcon-${n.id}`);
+          const card = document.getElementById(`notif-${n.id}`);
+          if (dot) {
+            dot.classList.remove("bg-emerald-600");
+            notifIcon.classList.remove("bg-gray-200");
+            card.classList.remove("bg-gray-200", "font-bold");
+          }
+        });
+      } catch (err) {
+        console.log(err);
+      }
+    };
 
-            } catch (err) {
-                console.log(err);
-            }
+    window.deleteNotif = async function (e, notifID) {
+      e.stopPropagation();
+      try {
+        const result = confirm("Are you sure you want to delete this Notification?");
+        if (!result) return;
+
+        await deleteDoc(doc(db, "Members", memberID, "Notifications", notifID));
+
+        //re-render the notification list
+        renderNotif(memberID);
+
+        showSuccess("Notification Deleted Successfully");
+      } catch (err) {
+        console.log(err);
+      }
+    };
+
+    //func when opening a notif
+    window.openNotif = async function (notifID) {
+      const dot = document.getElementById(`dot-${notifID}`);
+      const notifIcon = document.getElementById(`notifIcon-${notifID}`);
+      const card = document.getElementById(`notif-${notifID}`);
+      try {
+        const loanRef = doc(db, "Members", memberID, "Notifications", notifID);
+        const querySnapshot = await getDoc(loanRef);
+        await updateDoc(loanRef, { seen: true });
+        dot.classList.remove("bg-emerald-600");
+        notifIcon.classList.remove("bg-gray-200");
+        card.classList.remove("bg-gray-200", "font-bold");
+
+        document.getElementById("notification-detail-overlay").classList.remove("hidden");
+        const createdAt = querySnapshot.data().createdAt.toDate();
+        const formattedTime = createdAt.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true, // 12-hour format with AM/PM
+        });
+
+        const userData = {
+          title: querySnapshot.data().title,
+          dateTime: `${formatDate(querySnapshot.data().createdAt)} • ${formattedTime}`,
+          message: querySnapshot.data().message,
         };
 
-        window.deleteNotif = async function(e, notifID) {
-            e.stopPropagation();
-            try {
-                const result = confirm("Are you sure you want to delete this Notification?");
-                if (!result) return;
+        document.querySelectorAll("[data-field]").forEach((el) => {
+          const field = el.dataset.field;
+          el.textContent = userData[field];
+        });
 
-                await deleteDoc(doc(db, "Members", memberID, "Notifications", notifID));
+        document.getElementById("closeBtn").addEventListener("click", function (e) {
+          document.getElementById("notification-detail-overlay").classList.add("hidden");
+        });
 
-                //re-render the notification list
-                renderNotif(memberID);
-
-                showSuccess("Notification Deleted Successfully")
-            } catch (err) {
-                console.log(err);
-            }
-        }
-
-        //func when opening a notif
-        window.openNotif = async function(notifID) {
-            const dot = document.getElementById(`dot-${notifID}`)
-            const notifIcon = document.getElementById(`notifIcon-${notifID}`);
-            const card = document.getElementById(`notif-${notifID}`);
-            try {
-                const loanRef = doc(db, "Members", memberID, "Notifications", notifID)
-                const querySnapshot = await getDoc(loanRef);
-                await updateDoc(loanRef, {seen : true})
-                dot.classList.remove('bg-emerald-600');
-                notifIcon.classList.remove("bg-gray-200");
-                card.classList.remove("bg-gray-200", "font-bold");
-
-                document.getElementById('notification-detail-overlay').classList.remove('hidden');
-                const createdAt = querySnapshot.data().createdAt.toDate();
-                const formattedTime = createdAt.toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                    hour12: true     // 12-hour format with AM/PM
-                });
-                
-                const userData = {
-                    title: querySnapshot.data().title,
-                    dateTime: `${formatDate(querySnapshot.data().createdAt)} • ${formattedTime}`,
-                    message: querySnapshot.data().message
-                }
-
-                document.querySelectorAll("[data-field]").forEach(el => {
-                    const field = el.dataset.field
-                    el.textContent = userData[field]
-                })
-
-                document.getElementById("closeBtn").addEventListener('click', function(e) {
-                    document.getElementById('notification-detail-overlay').classList.add('hidden');
-                })
-
-                document.getElementById('notification-detail-overlay').addEventListener('click', function(e) {
-                    if (e.target === this) {
-                        document.getElementById('notification-detail-overlay').classList.add('hidden');
-                    }
-                });
-
-
-            } catch (err) {
-                console.log(err)
-            } 
-        }
-    } catch (err) {
-        console.log(err)
-    }
+        document.getElementById("notification-detail-overlay").addEventListener("click", function (e) {
+          if (e.target === this) {
+            document.getElementById("notification-detail-overlay").classList.add("hidden");
+          }
+        });
+      } catch (err) {
+        console.log(err);
+      }
+    };
+  } catch (err) {
+    console.log(err);
+  }
 }
