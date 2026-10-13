@@ -1,5 +1,7 @@
 # SVConnect Mobile Application
 
+[![CI](https://github.com/quintuckyy/Application-SVConnect/actions/workflows/ci.yml/badge.svg)](https://github.com/quintuckyy/Application-SVConnect/actions/workflows/ci.yml)
+
 SVConnect is the member-facing mobile app for St. Vincent Ferrer Multi-Purpose Cooperative (SVFMPC) in Romblon. Members can check their savings, track loan applications, review transaction history, and see cooperative announcements from their phone instead of having to go to the office for every inquiry. It pairs with a separate web admin dashboard that staff use to manage member records.
 
 This was built as a capstone project and has since been approved by SVFMPC management for turnover.
@@ -126,6 +128,8 @@ npm run dev
 
 Capacitor plugins like Push Notifications only work in the native build, not in the browser.
 
+**Continuous integration.** Every push to `main` and every pull request runs [GitHub Actions](.github/workflows/ci.yml): formatting, lint, unit tests, the Cloud Functions type-check and the production build; the Security Rules and Cloud Functions tests against the emulators; and an Android debug build, whose APK is attached to the run.
+
 ---
 
 ## Building the Android app
@@ -180,7 +184,7 @@ SVConnect Mobile Application is a member-facing app developed as a capstone proj
 - Improve push notifications for loan updates, announcements, and payment reminders
 - Add end-to-end tests (Playwright) for the main member flows
 - Replace the default Android package name before production release
-- Add CI/CD for Android build and release workflow
+- Extend CI to signed release builds and Play Store delivery
 - Improve error handling, loading states, and mobile responsiveness
 - Deploy the Cloud Functions and Security Rules to production (needs the Blaze plan) and add App Check
 - Add detailed loan payment tracking and due date reminders
