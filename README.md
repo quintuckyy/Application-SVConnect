@@ -11,8 +11,10 @@ This was built as a capstone project and has since been approved by SVFMPC manag
 - JavaScript (ES modules), HTML, Tailwind CSS 3
 - Vite (build and dev server), Capacitor 7 (Android)
 - Firebase Authentication and Cloud Firestore (Firebase JS SDK from npm)
+- Cloud Functions for Firebase (TypeScript, Node 22) and Firestore Security Rules
+- Firebase Emulator Suite for local development and integration tests
 - Supabase (home-screen announcements)
-- Vitest (unit tests), ESLint, Prettier
+- Vitest (unit, Security Rules and Cloud Functions tests), ESLint, Prettier
 
 ---
 
@@ -28,14 +30,36 @@ This was built as a capstone project and has since been approved by SVFMPC manag
 
 ---
 
+## Architecture and security
+
+The app is a client for Firebase. Anything that has to be trusted runs on the server:
+
+| Action                                       | Where it runs                                    | Why                                                                                                                                 |
+| -------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Check a Member ID during registration        | `checkMemberId` function                         | Returns only a status, so member records stay private                                                                               |
+| Link a login to a member, store the MPIN     | `completeRegistration` function                  | Sets the `memberId` custom claim and stores the MPIN with scrypt in `memberSecrets`                                                 |
+| Submit a loan application                    | `submitLoanApplication` function                 | Applies the loan rules on the server, in a transaction that blocks double submission; status and interest rate come from the server |
+| Overdue flags and the 2% penalty             | `applyLoanPenalties`, daily at 00:30 Manila time | Previously computed on the phone when the app was opened                                                                            |
+| Forgot-password MPIN check, account deletion | `verifyPasswordResetMpin`, `deleteMyAccount`     | MPIN checks with a 5-attempt lockout; deletion requires a sign-in within 5 minutes                                                  |
+
+[`firestore.rules`](firestore.rules) lets a member read only their own records and change only their display name and the read state of notifications and transactions. MPIN hashes can't be read from the app at all. The loan rules and the overdue logic live in `www/js/lib/` and are shared by the app (instant feedback) and the Cloud Functions (enforcement).
+
+The screens call `www/js/services/api.js`, which uses the Cloud Functions when `VITE_USE_CLOUD_FUNCTIONS=true` and otherwise falls back to doing the same work in the app. The fallback exists because deploying Cloud Functions needs Firebase's Blaze plan; the strict rules are only safe to deploy together with the functions.
+
+---
+
 ## Project structure
 
 ```
 SVConnect/
 ├── android/                 # Capacitor-generated native Android project
+├── functions/               # Cloud Functions (TypeScript, bundled with esbuild)
+│   └── src/                 # registration, loans, account, penalties, mpin
 ├── scripts/
 │   └── seed-firestore.mjs   # fills a Firestore project with fictional test data
-├── tests/                   # Vitest unit tests
+├── tests/
+│   ├── unit/                # pure logic, no Firebase
+│   └── emulator/            # Security Rules and Cloud Functions, against the emulators
 ├── www/                     # app source (Vite root)
 │   ├── index.html           # login
 │   ├── register.html
@@ -46,9 +70,12 @@ SVConnect/
 │       ├── app.js           # hash router
 │       ├── login.js         # registration, login, password reset
 │       ├── screens/         # one file per screen (render + init)
-│       ├── lib/             # pure logic: loan rules, MPIN hashing (unit tested)
-│       └── services/        # Firebase, Firestore queries, Supabase
+│       ├── lib/             # pure logic shared with Cloud Functions: loan rules, overdue rules, MPIN hashing
+│       └── services/        # Firebase setup, Firestore queries, api.js (server actions), Supabase
+├── firestore.rules          # Security Rules
+├── firebase.json            # Firebase CLI and emulator config
 ├── .env.example             # copy to .env and fill in
+├── .env.emulator            # settings for `npm run dev:emulator`
 ├── vite.config.js
 ├── capacitor.config.json    # webDir: dist (the Vite build output)
 └── package.json
@@ -58,24 +85,38 @@ SVConnect/
 
 ## Running it locally
 
-You'll need Node.js 20 or newer.
+You'll need Node.js 22 or newer, and Java 21 for the Firebase emulators.
+
+**Fully local, with Cloud Functions (recommended).** Everything runs on your machine against the Firebase Emulator Suite; no Firebase project or keys needed.
 
 ```bash
 npm install
-cp .env.example .env    # then fill in your Firebase and Supabase values
-npm run dev             # http://localhost:5503
+npm run emulators        # terminal 1: Auth, Firestore and Functions emulators, UI at http://localhost:4000
+npm run seed:emulator    # terminal 2: fictional members and loan products
+npm run dev:emulator     # terminal 2: the app at http://localhost:5503
 ```
 
-| Command           | What it does                                       |
-| ----------------- | -------------------------------------------------- |
-| `npm run dev`     | Dev server with hot reload                         |
-| `npm run build`   | Production build into `dist/`                      |
-| `npm run preview` | Serve the production build                         |
-| `npm test`        | Run the unit tests                                 |
-| `npm run lint`    | ESLint                                             |
-| `npm run format`  | Prettier                                           |
-| `npm run android` | Build and copy into the Android project            |
-| `npm run seed`    | Write fictional test data to Firestore (see below) |
+Register with Member ID 100001, 100002 or 100003. The emulator doesn't send emails: open the Emulator UI → Authentication to verify the account's email.
+
+**Against a real Firebase project.**
+
+```bash
+cp .env.example .env    # then fill in your Firebase and Supabase values
+npm run dev
+```
+
+| Command                                                | What it does                                                    |
+| ------------------------------------------------------ | --------------------------------------------------------------- |
+| `npm run dev`                                          | Dev server with hot reload                                      |
+| `npm run build`                                        | Production build into `dist/`                                   |
+| `npm run preview`                                      | Serve the production build                                      |
+| `npm test`                                             | Run the unit tests                                              |
+| `npm run test:emulator`                                | Security Rules and Cloud Functions tests (starts the emulators) |
+| `npm run lint`                                         | ESLint                                                          |
+| `npm run format`                                       | Prettier                                                        |
+| `npm run android`                                      | Build and copy into the Android project                         |
+| `npm run seed`                                         | Write fictional test data to Firestore (see below)              |
+| `npm run emulators` / `seed:emulator` / `dev:emulator` | Local development with the emulators                            |
 
 Capacitor plugins like Push Notifications only work in the native build, not in the browser.
 
@@ -115,6 +156,8 @@ The web app reads its Firebase and Supabase settings from `.env` (see `.env.exam
 3. Seed test data: Project settings → Service accounts → Generate new private key, save it as `serviceAccountKey.json` in the repo root (gitignored), then run `npm run seed`. Register in the app with Member ID 100001, 100002 or 100003. The script refuses to write to any project except the one named in it.
 4. For Android push notifications, download your own `google-services.json` into `android/app/` and set your own `onesignal_app_id` in `AndroidManifest.xml`.
 
+**Deploying the server side** (requires the Blaze plan): `firebase deploy --only functions,firestore`, then set `VITE_USE_CLOUD_FUNCTIONS=true` in `.env`. Deploy the rules and functions together: the rules block the client-side fallback.
+
 The home-screen announcement comes from a Supabase `announcements` table. If the Supabase variables are empty, the banner keeps its default content.
 
 ---
@@ -129,11 +172,11 @@ SVConnect Mobile Application is a member-facing app developed as a capstone proj
 
 - Add offline support for unreliable mobile connections
 - Improve push notifications for loan updates, announcements, and payment reminders
-- Add automated testing for core member app features
+- Add end-to-end tests (Playwright) for the main member flows
 - Replace the default Android package name before production release
 - Add CI/CD for Android build and release workflow
 - Improve error handling, loading states, and mobile responsiveness
-- Strengthen Firebase and Firestore security rules
+- Deploy the Cloud Functions and Security Rules to production (needs the Blaze plan) and add App Check
 - Add detailed loan payment tracking and due date reminders
 
 ## Project Status
