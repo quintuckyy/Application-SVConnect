@@ -1,4 +1,5 @@
 import { auth } from "../services/firebase.js";
+import { assessLoan } from "../lib/loanStatus.js";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   getMemberID,
@@ -339,16 +340,12 @@ async function checkOverDue(memberID) {
   try {
     const loanDoc = await getApprovedLoan(memberID);
     if (!loanDoc) return; //if there are no approvedLoans
-    const dueDateIndex = loanDoc.dueDateIndex;
-    const dueDate = new Date(loanDoc.dueDate[dueDateIndex]);
-    const today = loanDoc.TESTDATE.toDate();
-    const isOverDue = today > dueDate;
-
-    if (isOverDue) {
+    const payments = await getPaymentRef(memberID);
+    if (assessLoan(loanDoc, payments, new Date()).overdue) {
       alert("⚠️Loan Overdue.");
     }
   } catch (err) {
-    console.log(err);
+    console.error("Overdue check failed:", err);
   }
 }
 

@@ -5,19 +5,17 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
   signOut,
-  deleteUser,
 } from "firebase/auth";
 import {
   getMemberID,
   getMemberRef,
   updateName,
-  deleteUserAcc,
   createNotification,
   showSpinner,
   hideSpinner,
   showSuccess,
-  verifyMPIN,
 } from "../services/firebaseFunctions.js";
+import { deleteMyAccount } from "../services/api.js";
 
 export function Settings() {
   return `
@@ -305,39 +303,25 @@ async function deleteAccount(memberID) {
       return;
     }
 
-    //verify MPIN
     showSpinner();
-    const isValid = await verifyMPIN(memberID, userInputMPIN);
-    if (!isValid) {
-      alert("Incorrect MPIN.");
-      hideSpinner();
-      return;
-    }
+    // Checks the MPIN, unlinks the login from the member record, then deletes the login
+    await deleteMyAccount(memberID, userInputMPIN.trim());
 
-    //delete user
-    await deleteUser(user);
-    await deleteUserAcc(memberID);
-    await createNotification(
-      memberID,
-      "Gmail Removed",
-      "Your Gmail account has been removed from the system.",
-      "gmailRemoved",
-    );
-
-    showSuccess("Your account has been deleted successfully. Please Log-in");
     hideSpinner();
+    showSuccess("Your account has been deleted successfully. Please Log-in");
     setTimeout(() => {
       window.location.href = "index.html"; // redirect after deletion
     }, 2500);
   } catch (error) {
     console.error(error);
+    hideSpinner();
 
-    if (error.code === "auth/wrong-password") {
+    if (error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
       alert("The current password you entered is incorrect.");
     } else if (error.code === "auth/requires-recent-login") {
       alert("Please log in again to delete your account.");
     } else {
-      alert("The current password you entered is incorrect.");
+      alert(error.message || "Your account could not be deleted. Please try again.");
     }
   }
 }

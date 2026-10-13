@@ -7,6 +7,8 @@
 //   2. npm run seed              (writes the data)
 //      npm run seed -- --dry-run (prints what would be written, writes nothing)
 //
+// Or, for the local Firebase Emulator (no key needed): npm run seed:emulator
+//
 // Every document uses a fixed ID, so running it again overwrites the same test records.
 // Member documents are merged, so an account you already registered keeps its login fields.
 
@@ -16,7 +18,9 @@ import { getFirestore, Timestamp } from "firebase-admin/firestore";
 
 // Only ever seed this project. Never point this script at the cooperative's live project.
 const ALLOWED_PROJECT = "st-vincent-coop-connect";
+const EMULATOR_PROJECT = "demo-svconnect";
 const DRY_RUN = process.argv.includes("--dry-run");
+const USE_EMULATOR = process.argv.includes("--emulator");
 
 function loadCredential() {
   if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
@@ -33,13 +37,21 @@ function loadCredential() {
   process.exit(1);
 }
 
-const { credential, projectId } = loadCredential();
-if (projectId !== ALLOWED_PROJECT) {
-  console.error(`Refusing to seed "${projectId}". This script only writes to "${ALLOWED_PROJECT}".`);
-  process.exit(1);
+let projectId;
+if (USE_EMULATOR) {
+  // The Admin SDK talks to the emulator when this variable is set; no credentials needed
+  process.env.FIRESTORE_EMULATOR_HOST ??= "127.0.0.1:8080";
+  projectId = EMULATOR_PROJECT;
+  initializeApp({ projectId });
+} else {
+  const loaded = loadCredential();
+  projectId = loaded.projectId;
+  if (projectId !== ALLOWED_PROJECT) {
+    console.error(`Refusing to seed "${projectId}". This script only writes to "${ALLOWED_PROJECT}".`);
+    process.exit(1);
+  }
+  initializeApp({ credential: loaded.credential, projectId });
 }
-
-initializeApp({ credential, projectId });
 const db = getFirestore();
 
 // ---------- helpers ----------

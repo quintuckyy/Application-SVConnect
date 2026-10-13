@@ -1,29 +1,21 @@
 import { db } from "./firebase.js";
-import { mpinMatches } from "../lib/mpin.js";
-import {
-  doc,
-  collection,
-  addDoc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  updateDoc,
-  deleteField,
-  orderBy,
-} from "firebase/firestore";
+import { doc, collection, addDoc, getDoc, getDocs, query, where, updateDoc, orderBy, limit } from "firebase/firestore";
 
 export async function getLoanProducts(loanID) {
   const loanRef = doc(db, "loanProducts", loanID);
   const loanSnap = await getDoc(loanRef);
   return loanSnap.data();
 }
-//get Member ID
+// The signed-in user's Member ID. Read from the memberId claim that registration sets
+// (no database read); accounts registered without Cloud Functions are looked up by uid.
 export async function getMemberID(user) {
-  const q = query(collection(db, "Members"), where("uid", "==", user.uid));
+  const { claims } = await user.getIdTokenResult();
+  if (typeof claims.memberId === "string") return claims.memberId;
+
+  const q = query(collection(db, "Members"), where("uid", "==", user.uid), limit(1));
   const querySnapshot = await getDocs(q);
-  const memberDoc = querySnapshot.docs[0];
-  return memberDoc.id;
+  if (querySnapshot.empty) throw new Error("This account isn't linked to a member.");
+  return querySnapshot.docs[0].id;
 }
 //get Member Reference
 export async function getMemberRef(memberID) {
@@ -120,28 +112,6 @@ export async function updateName(memberID, data) {
   const dispName = await updateDoc(memberRef, { displayName: data });
   return dispName;
 }
-//delete doc
-export async function deleteUserAcc(memberID) {
-  const memberRef = doc(db, "Members", memberID);
-  const deleteAcc = await updateDoc(memberRef, {
-    email: deleteField(),
-    uid: deleteField(),
-    registered: deleteField(),
-    firstLoginNotificationSent: deleteField(),
-    mpinHash: deleteField(),
-    mpinSalt: deleteField(),
-    createdAt: deleteField(),
-  });
-  return deleteAcc;
-}
-// Check an MPIN against the member's stored salted hash
-export async function verifyMPIN(memberID, inputMPIN) {
-  const memberSnap = await getDoc(doc(db, "Members", memberID));
-  if (!memberSnap.exists()) return false;
-  const { mpinHash, mpinSalt } = memberSnap.data();
-  return mpinMatches(inputMPIN, mpinHash, mpinSalt);
-}
-
 //date convertion
 export function formatDate(date) {
   const formattedDate = date.toDate().toLocaleDateString("en-US", {

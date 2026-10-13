@@ -7,6 +7,7 @@ keystore/
 .env
 .env.*
 !.env.example
+!.env.emulator
 android/app/google-services.json
 GoogleService-Info.plist
 *serviceAccountKey.json

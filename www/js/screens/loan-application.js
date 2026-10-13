@@ -1,21 +1,19 @@
-import { auth, db } from "../services/firebase.js";
+import { auth } from "../services/firebase.js";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   getLoanProducts,
   getMemberID,
   getMemberRef,
   getLoanRef,
-  createNotification,
   showSpinner,
   hideSpinner,
   showSuccess,
 } from "../services/firebaseFunctions.js";
-import { collection, addDoc } from "firebase/firestore";
+import { submitLoanApplication } from "../services/api.js";
 import {
   validateLoanApplication,
   calculateAge,
   parseDateInput,
-  addBusinessDays,
   MIN_BORROWER_AGE,
   MAX_BORROWER_AGE,
 } from "../lib/loanRules.js";
@@ -555,24 +553,13 @@ async function handleAppForm(memberID, loanType) {
         return;
       }
 
-      const dateApplied = new Date();
-      const deadlineDate = addBusinessDays(dateApplied, 3);
+      // Checked above for instant feedback; the server checks the same rules again
+      showSpinner();
+      const { applied, deadline } = await submitLoanApplication(memberID, loanType, formVal);
+      hideSpinner();
 
-      await addDoc(collection(db, "Members", memberID, "loanApplications"), {
-        ...formVal,
-        dateApplied: dateApplied,
-        status: "Pending",
-      });
-
-      await createNotification(
-        memberID,
-        "Loan Submitted",
-        `Your loan application has been submitted. Kindly visit our office between ${formatDate(dateApplied)} to ${formatDate(deadlineDate)} (3 business days) to complete the processing.
-                 Please be advised that if you do not visit by the deadline, your application will not be processed further`,
-        "loanApplication",
-      );
       showSuccess(
-        `Your loan application has been submitted. Kindly visit our office between ${formatDate(dateApplied)} to ${formatDate(deadlineDate)} (3 business days) to complete the processing.`,
+        `Your loan application has been submitted. Kindly visit our office between ${applied} to ${deadline} (3 business days) to complete the processing.`,
       );
       setTimeout(() => {
         location.hash = "#/home";
@@ -580,7 +567,11 @@ async function handleAppForm(memberID, loanType) {
     } catch (err) {
       console.error("Loan application failed:", err);
       hideSpinner();
-      alert("Your application could not be submitted. Check your connection and try again.");
+      alert(
+        err.code === "failed-precondition"
+          ? err.message
+          : "Your application could not be submitted. Check your connection and try again.",
+      );
     }
   });
 }
@@ -623,10 +614,4 @@ function setupAgeValidation() {
   //validate when age is entered
   ageInput.addEventListener("change", validateAgeAndBirthdate);
   dateOfBirthInput.addEventListener("blur", validateAgeAndBirthdate);
-}
-
-// Function to format date as "Month DD, YYYY"
-function formatDate(date) {
-  const options = { year: "numeric", month: "long", day: "numeric" };
-  return date.toLocaleDateString("en-US", options);
 }

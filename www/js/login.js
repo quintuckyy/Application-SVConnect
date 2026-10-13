@@ -1,13 +1,14 @@
 import { auth, db } from "./services/firebase.js";
-import { verifyMPIN } from "./services/firebaseFunctions.js";
-import { generateSalt, hashMPIN } from "./lib/mpin.js";
+import { getMemberID } from "./services/firebaseFunctions.js";
+import { checkMemberId, linkMemberAccount, verifyPasswordResetMpin } from "./services/api.js";
 import {
   createUserWithEmailAndPassword,
+  deleteUser,
   signInWithEmailAndPassword,
   sendEmailVerification,
   sendPasswordResetEmail,
 } from "firebase/auth";
-import { doc, getDoc, getDocs, setDoc, collection, addDoc, updateDoc, query, where } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, updateDoc } from "firebase/firestore";
 
 const signUp = document.getElementById("step2");
 const registerUser = document.getElementById("registerBtn");
@@ -28,12 +29,9 @@ if (registerUser) {
     }
 
     try {
-      const docRef = doc(db, "Members", id);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-
-        if (data.email && data.email.trim() !== "") {
+      const status = await checkMemberId(id);
+      if (status !== "not_found") {
+        if (status === "taken") {
           document
             .getElementById("member_id")
             .classList.add("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
@@ -69,22 +67,16 @@ if (signUp) {
     const password = document.getElementById("password").value.trim();
     const confirm = document.getElementById("confirm").value.trim();
     const mpin = document.getElementById("mpin").value.trim();
-    const mpinInput = document.getElementById("mpin");
-
-    const salt = generateSalt();
-    const mpinHash = await hashMPIN(mpin, salt);
 
     const msg = document.getElementById("register_msg");
     const id = localStorage.getItem("currentMemberID");
 
-    mpinInput.addEventListener("keypress", (e) => {
-      // Allow only digits
-      if (!/[0-9]/.test(e.key)) {
-        e.preventDefault();
-      }
-    });
-
     msg.textContent = "";
+
+    if (!/^\d{4}$/.test(mpin)) {
+      msg.textContent = "MPIN must be exactly 4 digits.";
+      return;
+    }
 
     if (password.length < 6) {
       msg.textContent = "Password must be at least 6 characters.";
@@ -106,21 +98,16 @@ if (signUp) {
     document.getElementById("password").classList.remove("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
     document.getElementById("confirm").classList.remove("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
 
+    let user;
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      await setDoc(
-        doc(db, "Members", id),
-        {
-          email: email,
-          uid: user.uid,
-          registered: true,
-          mpinHash: mpinHash,
-          mpinSalt: salt,
-          createdAt: new Date(),
-        },
-        { merge: true },
-      );
+      ({ user } = await createUserWithEmailAndPassword(auth, email, password));
+      try {
+        await linkMemberAccount(id, mpin);
+      } catch (linkErr) {
+        // Don't leave a login behind that isn't linked to any member
+        await deleteUser(user).catch(() => {});
+        throw linkErr;
+      }
 
       await sendEmailVerification(user);
       window.showSuccessMessage(
@@ -132,7 +119,12 @@ if (signUp) {
       }, 3500);
     } catch (err) {
       console.error(err);
-      msg.textContent = "Invalid Input.";
+      msg.textContent =
+        err.code === "auth/email-already-in-use"
+          ? "That email is already registered. Sign in instead."
+          : err.code === "auth/invalid-email"
+            ? "Enter a valid email address."
+            : err.message || "Registration failed. Please try again.";
     }
   });
 }
@@ -178,17 +170,8 @@ if (loginUser) {
         .getElementById("password")
         .classList.remove("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
       document.getElementById("logInSpinner").classList.remove("hidden");
-      //proceed with login notification if gmail is verified
-      const membersRef = collection(db, "Members");
-      const snapshot = await getDocs(membersRef);
-      let memberDocId = null;
-
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.email === user.email) {
-          memberDocId = doc.id;
-        }
-      });
+      // Find this login's member: a token claim or a single uid lookup, not a scan of every member
+      const memberDocId = await getMemberID(user).catch(() => null);
 
       if (memberDocId) {
         const memberRef = doc(db, "Members", memberDocId);
@@ -235,33 +218,23 @@ if (forgotBtn) {
     const email = prompt("Enter your email:");
     if (!email) return;
 
-    //query firestore to find the member document by email
-    const membersRef = collection(db, "Members");
-    const qSnap = await getDocs(query(membersRef, where("email", "==", email)));
-    if (qSnap.empty) {
-      alert("Email not found. Please try again.");
-      return;
-    }
-
-    const docSnap = qSnap.docs[0];
-    const memberID = docSnap.id; //get the doc ID
-
-    //ask for MPIN
     const userInputMPIN = prompt("Please enter your MPIN to continue:");
     if (!userInputMPIN) {
       alert("MPIN is required to proceed.");
       return;
     }
 
-    //verify MPIN
-    const isValid = await verifyMPIN(memberID, userInputMPIN);
-    if (!isValid) {
-      alert("Incorrect MPIN.");
+    try {
+      // Checked on the server when Cloud Functions are on, with a lockout after 5 wrong tries.
+      // The same message is shown for an unknown email and a wrong MPIN.
+      await verifyPasswordResetMpin(email.trim(), userInputMPIN.trim());
+    } catch (err) {
+      alert(err.message);
       return;
     }
 
     try {
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(auth, email.trim());
       window.showSuccessMessage("Password reset email sent! Check your inbox.");
     } catch (err) {
       console.error(err);

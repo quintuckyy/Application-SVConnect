@@ -1,4 +1,5 @@
-import { auth, db } from "../services/firebase.js";
+import { auth, db, useCloudFunctions } from "../services/firebase.js";
+import { assessLoan } from "../lib/loanStatus.js";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import {
   getMemberID,
@@ -461,51 +462,23 @@ async function logout() {
   }
 }
 
+// Without Cloud Functions, overdue flags and penalties are applied when the member opens the app.
+// With them, the daily applyLoanPenalties job does it and Security Rules block the app from writing.
 async function checkOverDueHome(memberID, loanID) {
+  if (useCloudFunctions || !loanID) return;
   try {
     const loanDoc = await getApprovedLoan(memberID);
-    const paymentSnap = await getPaymentRef(memberID);
-    if (!loanDoc) return; //if there are no approvedLoans
-    const loanRef = doc(db, "Members", memberID, "approvedLoans", loanID);
-    const dueDateIndex = loanDoc.dueDateIndex;
-    const dueDate = new Date(loanDoc.dueDate[dueDateIndex]);
-    const today = loanDoc.TESTDATE.toDate();
-    const formattedDate = dueDate.toLocaleDateString("en-US", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
+    if (!loanDoc) return;
+    const payments = await getPaymentRef(memberID);
+    const { updates, notifications } = assessLoan(loanDoc, payments, new Date());
+    if (!Object.keys(updates).length) return;
 
-    const isOverDue = today > dueDate;
-    const graceLimit = new Date(dueDate);
-    graceLimit.setDate(graceLimit.getDate() + 7);
-    const paidThisMonth = paymentSnap.some((pay) => pay.paymentIndex === dueDateIndex);
-
-    if (!paidThisMonth && today > graceLimit && isOverDue && isOverDue && loanDoc.penaltyEligible !== true) {
-      await createNotification(
-        memberID,
-        "Loan Penalty!",
-        `⚠️ Your loan payment is overdue! A penalty of 2% of your monthly amortization has been applied. 
-                    Please settle your payment immediately. Due date: ${formattedDate}`,
-        "loanPenaltyEligible",
-      );
-      await updateDoc(loanRef, {
-        penaltyEligible: true,
-        penalties: loanDoc.monthlyPayment * 0.02,
-      });
-      console.log("penalty eligible");
-    }
-    if (isOverDue && loanDoc.isOverDue !== true) {
-      await createNotification(
-        memberID,
-        "Loan Overdue!",
-        `⚠️Your loan payment is overdue! Please settle immediately. Due date is ${formattedDate}`,
-        "loanOverDue",
-      );
-      await updateDoc(loanRef, { isOverDue: true });
+    await updateDoc(doc(db, "Members", memberID, "approvedLoans", loanID), updates);
+    for (const n of notifications) {
+      await createNotification(memberID, n.title, n.message, n.type);
     }
   } catch (err) {
-    console.log(err);
+    console.error("Overdue check failed:", err);
   }
 }
 
