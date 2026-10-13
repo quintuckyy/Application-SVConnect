@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateLoanApplication, calculateAge, parseDateInput, addBusinessDays } from "../www/js/lib/loanRules.js";
+import { validateLoanApplication, calculateAge, parseDateInput, addBusinessDays } from "../../www/js/lib/loanRules.js";
 
 const valid = {
   monthlyIncome: 15000,

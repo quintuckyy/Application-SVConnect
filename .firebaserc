@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "st-vincent-coop-connect",
+    "emulator": "demo-svconnect"
+  }
+}

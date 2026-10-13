@@ -1,0 +1,97 @@
+rules_version = '2';
+
+// SVConnect Security Rules
+//
+// The app can read only the signed-in member's own data and can change only a few
+// harmless fields. Everything that matters (registration, loan applications, MPINs,
+// overdue flags and penalties) is written by Cloud Functions through the Admin SDK,
+// which these rules don't apply to.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // The memberId custom claim is set by the completeRegistration function.
+    // Accounts without the claim fall back to the uid stored on the member document.
+    function ownsMember(memberId) {
+      return signedIn() && (
+        request.auth.token.memberId == memberId ||
+        get(/databases/$(database)/documents/Members/$(memberId)).data.uid == request.auth.uid
+      );
+    }
+
+    // The update touches only the listed fields
+    function onlyChanges(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    // A client-supplied timestamp within 5 minutes of the server's clock
+    function isRecent(ts) {
+      return ts is timestamp
+        && ts > request.time - duration.value(5, 'm')
+        && ts < request.time + duration.value(5, 'm');
+    }
+
+    match /loanProducts/{loanType} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // MPIN hashes and lockout counters: Cloud Functions only
+    match /memberSecrets/{memberId} {
+      allow read, write: if false;
+    }
+
+    match /Members/{memberId} {
+      // The second condition lets the app find its own member by uid:
+      // query(Members, where("uid", "==", auth.uid))
+      allow read: if ownsMember(memberId)
+        || (signedIn() && resource.data.uid == request.auth.uid);
+
+      allow update: if ownsMember(memberId)
+        && onlyChanges(['displayName', 'firstLoginNotificationSent'])
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() > 0
+        && request.resource.data.displayName.size() <= 80
+        && (!('firstLoginNotificationSent' in request.resource.data)
+            || request.resource.data.firstLoginNotificationSent == true);
+
+      // Members are created by the cooperative; logins are linked and unlinked by Cloud Functions
+      allow create, delete: if false;
+
+      match /Notifications/{notificationId} {
+        allow read, delete: if ownsMember(memberId);
+
+        // The app reports only these two events itself; everything else comes from Cloud Functions
+        allow create: if ownsMember(memberId)
+          && request.resource.data.keys().hasOnly(['title', 'message', 'type', 'createdAt', 'seen'])
+          && request.resource.data.type in ['login', 'passwordReset']
+          && request.resource.data.title is string && request.resource.data.title.size() <= 100
+          && request.resource.data.message is string && request.resource.data.message.size() <= 1000
+          && request.resource.data.seen == false
+          && isRecent(request.resource.data.createdAt);
+
+        allow update: if ownsMember(memberId)
+          && onlyChanges(['seen'])
+          && request.resource.data.seen == true;
+      }
+
+      match /Transactions/{transactionId} {
+        allow read: if ownsMember(memberId);
+        allow update: if ownsMember(memberId)
+          && onlyChanges(['seen'])
+          && request.resource.data.seen == true;
+      }
+
+      // Read-only for the member. Written by the cooperative's staff dashboard or Cloud Functions.
+      match /loanApplications/{id} { allow read: if ownsMember(memberId); }
+      match /approvedLoans/{id}    { allow read: if ownsMember(memberId); }
+      match /paymentHistory/{id}   { allow read: if ownsMember(memberId); }
+      match /completedLoans/{id}   { allow read: if ownsMember(memberId); }
+      match /savingsAccount/{id}   { allow read: if ownsMember(memberId); }
+    }
+  }
+}

@@ -24,7 +24,7 @@ export default defineConfig({
   server: { port: 5503 },
   test: {
     root: projectDir,
-    include: ["tests/**/*.test.js"],
+    include: ["tests/unit/**/*.test.js"],
     environment: "node",
   },
 });

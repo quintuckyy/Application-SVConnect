@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateSalt, hashMPIN, mpinMatches } from "../www/js/lib/mpin.js";
+import { generateSalt, hashMPIN, mpinMatches } from "../../www/js/lib/mpin.js";
 
 describe("generateSalt", () => {
   it("returns 16 random bytes as 32 hex characters", () => {
