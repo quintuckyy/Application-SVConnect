@@ -1,10 +1,23 @@
-import { auth, db } from "../services/firebase.js";
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { getMemberID, getMemberRef, getNotifRef, getTransacRef, getPaymentRef, getApprovedLoan, getApprovedLoanIDs, createNotification, showSuccess } from "../services/firebaseFunctions.js";
-import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { auth, db, useCloudFunctions } from "../services/firebase.js";
+import { whenSignedIn } from "../services/session.js";
+import { assessLoan } from "../lib/loanStatus.js";
+import { signOut } from "firebase/auth";
+import {
+  getMemberID,
+  getMemberRef,
+  getNotifRef,
+  getTransacRef,
+  getPaymentRef,
+  getApprovedLoan,
+  getApprovedLoanIDs,
+  createNotification,
+} from "../services/firebaseFunctions.js";
+import { showSuccess, showError } from "../services/ui.js";
+import { doc, updateDoc } from "firebase/firestore";
+import { supabase } from "../services/supabase.js";
 
-export function Home(){
-    return`
+export function Home() {
+  return `
     <div id="Homespinner" 
         class="hidden fixed inset-0 flex items-center justify-center bg-black/20 z-[9999]">
         <div class="w-10 h-10 border-4 border-gray-300 border-t-green-600 rounded-full animate-spin"></div>
@@ -217,332 +230,255 @@ export function Home(){
         </section>
     </main>
     <div class="h-20"></div>
-    `
+    `;
 }
 
 export function initHomeDashboard() {
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            document.getElementById("Homespinner").classList.remove("hidden");
-            loadLatestAnnouncement()
-            const memberID = await getMemberID(user);
-            const docSnap = await getMemberRef(memberID);
-            const notifSnap = await getNotifRef(memberID);
-            const transacSnap = await getTransacRef(memberID);
-            const notifDot = document.getElementById("notifDot")
-            const transacDot = document.getElementById("transacDot")
-            
-            const loanIDs = await getApprovedLoanIDs(memberID)
-            checkOverDueHome(memberID, loanIDs[0])
-            document.getElementById("Homespinner").classList.add("hidden");
-            const hasUnseenNotif = notifSnap.some(notif => notif.seen === "false" || notif.seen === false);
-            const hasUnseenTransac = transacSnap.some(transac => transac.seen === "false" || transac.seen === false);
+  whenSignedIn(async (user) => {
+    const spinner = document.getElementById("Homespinner");
+    spinner.classList.remove("hidden");
+    try {
+      await loadDashboard(user);
+    } catch (err) {
+      console.error("Loading the dashboard failed:", err);
+      showError("Your dashboard couldn't be loaded. Pull down to try again.");
+    } finally {
+      spinner.classList.add("hidden");
+    }
 
-            if (hasUnseenNotif) {
-                notifDot.classList.remove("hidden");
-            } else {
-                notifDot.classList.add("hidden");
-            }
+    document.getElementById("logoutBtn").addEventListener("click", async (e) => {
+      e.preventDefault();
+      await logout();
+    });
+    initPullToRefresh();
+  });
+}
 
-            if (hasUnseenTransac) {
-                transacDot.classList.remove("hidden");
-            } else {
-                transacDot.classList.add("hidden");
-            }
+const greetingFor = (hour) => (hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening");
 
-            document.getElementById("userName").textContent = docSnap.displayName
-            document.getElementById("userID").textContent = `Member ID: ${memberID}`
-            document.getElementById("userInitials").textContent = docSnap.displayName.split(' ').map(n => n[0]).join('')
-            //greetings
-            const hour = new Date().getHours();
-            const greetingElement = document.getElementById("greetings")
-            if (hour < 12) {
-                greetingElement.textContent = `Good Morning, ${docSnap.displayName.split(' ')[0]}`;
-            } else if (hour < 18) {
-                greetingElement.textContent = `Good Afternoon, ${docSnap.displayName.split(' ')[0]}`;
-            } else {
-                greetingElement.textContent = `Good Evening, ${docSnap.displayName.split(' ')[0]}`;
-            }
-            const logoutBtn = document.getElementById('logoutBtn')
-            logoutBtn.addEventListener("click", async (e) => {
-                e.preventDefault()
-                await logout()
-            })
-            
-            // Initialize pull-to-refresh
-            initPullToRefresh();
-        }
-    }) 
+// Used for the first load and for pull-to-refresh
+async function loadDashboard(user) {
+  const memberID = await getMemberID(user);
+  // These reads don't depend on each other, so run them in parallel instead of one by one
+  const [member, notifications, transactions, loanIDs] = await Promise.all([
+    getMemberRef(memberID),
+    getNotifRef(memberID),
+    getTransacRef(memberID),
+    getApprovedLoanIDs(memberID),
+    loadLatestAnnouncement(),
+  ]);
+
+  const name = member.displayName ?? "Member";
+  document.getElementById("userName").textContent = name;
+  document.getElementById("userID").textContent = `Member ID: ${memberID}`;
+  document.getElementById("userInitials").textContent = name
+    .split(" ")
+    .map((n) => n[0])
+    .join("");
+  document.getElementById("greetings").textContent = `${greetingFor(new Date().getHours())}, ${name.split(" ")[0]}`;
+
+  const unseen = (items) => items.some((item) => item.seen === false || item.seen === "false");
+  document.getElementById("notifDot").classList.toggle("hidden", !unseen(notifications));
+  document.getElementById("transacDot").classList.toggle("hidden", !unseen(transactions));
+
+  await checkOverDueHome(memberID, loanIDs[0]);
 }
 
 //pull-to-refresh functionality
 function initPullToRefresh() {
-    const mainContent = document.getElementById('mainContent');
-    const indicator = document.getElementById('pullRefreshIndicator');
-    let startY = 0;
-    let currentY = 0;
-    let isPulling = false;
-    const pullThreshold = 80; //distance needed to trigger refresh
+  const mainContent = document.getElementById("mainContent");
+  const indicator = document.getElementById("pullRefreshIndicator");
+  let startY = 0;
+  let currentY = 0;
+  let isPulling = false;
+  const pullThreshold = 80; //distance needed to trigger refresh
 
-    mainContent.addEventListener('touchstart', (e) => {
-        //only enable pull-to-refresh if at the top of the page
-        if (window.scrollY === 0) {
-            startY = e.touches[0].clientY;
-            isPulling = true;
-        }
-    }, { passive: true });
+  mainContent.addEventListener(
+    "touchstart",
+    (e) => {
+      //only enable pull-to-refresh if at the top of the page
+      if (window.scrollY === 0) {
+        startY = e.touches[0].clientY;
+        isPulling = true;
+      }
+    },
+    { passive: true },
+  );
 
-    mainContent.addEventListener('touchmove', (e) => {
-        if (!isPulling) return;
+  mainContent.addEventListener(
+    "touchmove",
+    (e) => {
+      if (!isPulling) return;
 
-        currentY = e.touches[0].clientY;
-        const pullDistance = currentY - startY;
+      currentY = e.touches[0].clientY;
+      const pullDistance = currentY - startY;
 
-        //only show indicator when pulling down
-        if (pullDistance > 0 && window.scrollY === 0) {
-            e.preventDefault();
-            
-            //calculate transform and opacity based on pull distance
-            const progress = Math.min(pullDistance / pullThreshold, 1);
-            const translateY = Math.min(pullDistance * 0.5, 60);
-            
-            indicator.style.transform = `translateY(${translateY - 100}px)`;
-            indicator.style.opacity = progress;
-        }
-    }, { passive: false });
+      //only show indicator when pulling down
+      if (pullDistance > 0 && window.scrollY === 0) {
+        e.preventDefault();
 
-    mainContent.addEventListener('touchend', async () => {
-        if (!isPulling) return;
+        //calculate transform and opacity based on pull distance
+        const progress = Math.min(pullDistance / pullThreshold, 1);
+        const translateY = Math.min(pullDistance * 0.5, 60);
 
-        const pullDistance = currentY - startY;
-        
-        // If pulled past threshold, trigger refresh
-        if (pullDistance > pullThreshold && window.scrollY === 0) {
-            indicator.style.transform = 'translateY(10px)';
-            indicator.style.opacity = '1';
-            
-            // Refresh the page
-            await refreshHomePage();
-            
-            // Hide indicator after refresh
-            setTimeout(() => {
-                indicator.style.transform = 'translateY(-100px)';
-                indicator.style.opacity = '0';
-            }, 500);
-        } else {
-            // Reset indicator if threshold not met
-            indicator.style.transform = 'translateY(-100px)';
-            indicator.style.opacity = '0';
-        }
+        indicator.style.transform = `translateY(${translateY - 100}px)`;
+        indicator.style.opacity = progress;
+      }
+    },
+    { passive: false },
+  );
 
-        isPulling = false;
-        startY = 0;
-        currentY = 0;
-    });
+  mainContent.addEventListener("touchend", async () => {
+    if (!isPulling) return;
+
+    const pullDistance = currentY - startY;
+
+    // If pulled past threshold, trigger refresh
+    if (pullDistance > pullThreshold && window.scrollY === 0) {
+      indicator.style.transform = "translateY(10px)";
+      indicator.style.opacity = "1";
+
+      // Refresh the page
+      await refreshHomePage();
+
+      // Hide indicator after refresh
+      setTimeout(() => {
+        indicator.style.transform = "translateY(-100px)";
+        indicator.style.opacity = "0";
+      }, 500);
+    } else {
+      // Reset indicator if threshold not met
+      indicator.style.transform = "translateY(-100px)";
+      indicator.style.opacity = "0";
+    }
+
+    isPulling = false;
+    startY = 0;
+    currentY = 0;
+  });
 }
 
 // Function to refresh the home page
 async function refreshHomePage() {
-    try {
-        // Reload the current data
-        const user = auth.currentUser;
-        if (user) {
-            const memberID = await getMemberID(user);
-            const docSnap = await getMemberRef(memberID);
-            const notifSnap = await getNotifRef(memberID);
-            const transacSnap = await getTransacRef(memberID);
-            
-            // Reload latest announcement
-            await loadLatestAnnouncement();
-            
-            // Update notification and transaction dots
-            const notifDot = document.getElementById("notifDot");
-            const transacDot = document.getElementById("transacDot");
-            
-            const hasUnseenNotif = notifSnap.some(notif => notif.seen === "false" || notif.seen === false);
-            const hasUnseenTransac = transacSnap.some(transac => transac.seen === "false" || transac.seen === false);
-
-            if (hasUnseenNotif) {
-                notifDot.classList.remove("hidden");
-            } else {
-                notifDot.classList.add("hidden");
-            }
-
-            if (hasUnseenTransac) {
-                transacDot.classList.remove("hidden");
-            } else {
-                transacDot.classList.add("hidden");
-            }
-
-            // Update greeting based on current time
-            const hour = new Date().getHours();
-            const greetingElement = document.getElementById("greetings");
-            const firstName = docSnap.displayName.split(' ')[0];
-            
-            if (hour < 12) {
-                greetingElement.textContent = `Good Morning, ${firstName}`;
-            } else if (hour < 18) {
-                greetingElement.textContent = `Good Afternoon, ${firstName}`;
-            } else {
-                greetingElement.textContent = `Good Evening, ${firstName}`;
-            }
-
-            // Check for overdue loans
-            const loanIDs = await getApprovedLoanIDs(memberID);
-            if (loanIDs.length > 0) {
-                await checkOverDueHome(memberID, loanIDs[0]);
-            }
-        }
-    } catch (error) {
-        console.error('Error refreshing home page:', error);
-    }
+  const user = auth.currentUser;
+  if (!user) return;
+  try {
+    await loadDashboard(user);
+  } catch (err) {
+    console.error("Refreshing the dashboard failed:", err);
+    showError("Couldn't refresh. Check your connection and try again.");
+  }
 }
 
 function Menu(e) {
-    let list = document.querySelector('ul');
-    if (e.name === 'menu') {
-        e.name = "close";
-        list.classList.add('left-0');
-        list.classList.add('opacity-100');
-        list.classList.remove('left-[-100%]');
-        document.body.classList.add("overflow-hidden");
-    } else {
-        e.name = "menu";
-        list.classList.remove('left-0');
-        list.classList.remove('opacity-100');
-        list.classList.add('left-[-100%]');
-        document.body.classList.remove("overflow-hidden");
-    }
+  let list = document.querySelector("ul");
+  if (e.name === "menu") {
+    e.name = "close";
+    list.classList.add("left-0");
+    list.classList.add("opacity-100");
+    list.classList.remove("left-[-100%]");
+    document.body.classList.add("overflow-hidden");
+  } else {
+    e.name = "menu";
+    list.classList.remove("left-0");
+    list.classList.remove("opacity-100");
+    list.classList.add("left-[-100%]");
+    document.body.classList.remove("overflow-hidden");
+  }
 }
 window.Menu = Menu;
 
 //remove overflow hidden when menu contents are clicked
 function navigateScreen(screenId) {
-    let list = document.querySelector('ul');
-    list.classList.remove('left-0', 'opacity-100');
-    list.classList.add('left-[-100%]');
-    document.body.classList.remove("overflow-hidden");
+  let list = document.querySelector("ul");
+  list.classList.remove("left-0", "opacity-100");
+  list.classList.add("left-[-100%]");
+  document.body.classList.remove("overflow-hidden");
 
-    window.location.hash = `#/${screenId}`;
+  window.location.hash = `#/${screenId}`;
 }
 window.navigateScreen = navigateScreen;
 
 async function logout() {
-    try {
-        await signOut(auth);
-        showSuccess("You’ve been logged out.")
-        setTimeout(() => {
-            window.location.href = "index.html";
-        }, 2000); 
-    } catch (error) {
-        console.error(error);
-    }
+  try {
+    await signOut(auth);
+    showSuccess("You’ve been logged out.");
+    setTimeout(() => {
+      window.location.href = "index.html";
+    }, 2000);
+  } catch (error) {
+    console.error(error);
+  }
 }
 
+// Without Cloud Functions, overdue flags and penalties are applied when the member opens the app.
+// With them, the daily applyLoanPenalties job does it and Security Rules block the app from writing.
 async function checkOverDueHome(memberID, loanID) {
-    try {
-        const loanDoc = await getApprovedLoan(memberID);
-        const paymentSnap = await getPaymentRef(memberID)
-        if (!loanDoc) return;//if there are no approvedLoans
-        const loanRef = doc(db, "Members", memberID, "approvedLoans", loanID);
-        const dueDateIndex = loanDoc.dueDateIndex
-        const dueDate = new Date(loanDoc.dueDate[dueDateIndex])  
-        const today = loanDoc.TESTDATE.toDate();
-        const formattedDate = dueDate.toLocaleDateString("en-US", {
-            day: "numeric",
-            month: "short",
-            year: "numeric"
-        })
+  if (useCloudFunctions || !loanID) return;
+  try {
+    const loanDoc = await getApprovedLoan(memberID);
+    if (!loanDoc) return;
+    const payments = await getPaymentRef(memberID);
+    const { updates, notifications } = assessLoan(loanDoc, payments, new Date());
+    if (!Object.keys(updates).length) return;
 
-        const isOverDue = today > dueDate
-        const graceLimit = new Date(dueDate);
-        graceLimit.setDate(graceLimit.getDate() + 7);
-        const paidThisMonth = paymentSnap.some(pay => pay.paymentIndex === dueDateIndex);
-
-        if (!paidThisMonth && today > graceLimit && isOverDue && isOverDue && loanDoc.penaltyEligible !== true) {
-            await createNotification(memberID,
-                "Loan Penalty!",
-                `⚠️ Your loan payment is overdue! A penalty of 2% of your monthly amortization has been applied. 
-                    Please settle your payment immediately. Due date: ${formattedDate}`,
-                "loanPenaltyEligible"
-            )
-            await updateDoc(loanRef, { 
-                penaltyEligible: true,
-                penalties: loanDoc.monthlyPayment * 0.02,
-            });
-            console.log("penalty eligible")
-        }
-        if (isOverDue && loanDoc.isOverDue !== true) {
-            await createNotification(memberID,
-                "Loan Overdue!",
-                `⚠️Your loan payment is overdue! Please settle immediately. Due date is ${formattedDate}`,
-                "loanOverDue"
-            )
-            await updateDoc(loanRef, { isOverDue: true });
-        }
-    } catch (err) {
-        console.log(err)
+    await updateDoc(doc(db, "Members", memberID, "approvedLoans", loanID), updates);
+    for (const n of notifications) {
+      await createNotification(memberID, n.title, n.message, n.type);
     }
+  } catch (err) {
+    console.error("Overdue check failed:", err);
+  }
 }
-
-//supabase announcement setup
-const SUPABASE_URL = "https://jqhxhtcgtjserstcidyt.supabase.co";
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpxaHhodGNndGpzZXJzdGNpZHl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2NTUzNzIsImV4cCI6MjA5OTIzMTM3Mn0.ylw5B8dU4t9G-5G-XOt5Di2jCHSrh1xAqrcL-_Pwl_U';
-const { createClient } = supabase;
-const sbHome = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export async function loadLatestAnnouncement() {
-const titleEl = document.getElementById('homeAnnTitle');
-const subtitleEl = document.getElementById('homeAnnSubtitle');
-const imgEl = document.getElementById('homeAnnImage');
-const btnEl = document.getElementById('homeAnnButton');
+  const titleEl = document.getElementById("homeAnnTitle");
+  const subtitleEl = document.getElementById("homeAnnSubtitle");
+  const imgEl = document.getElementById("homeAnnImage");
+  const btnEl = document.getElementById("homeAnnButton");
 
-try {
-    const { data, error } = await sbHome
-    .from('announcements')
-    .select('*')
-    .eq('is_published', true)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  if (!supabase) return;
+
+  try {
+    const { data, error } = await supabase
+      .from("announcements")
+      .select("*")
+      .eq("is_published", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (error) throw error;
     if (!data) {
-
-    return;
+      return;
     }
 
     titleEl.textContent = data.title || "What's New?";
-    subtitleEl.textContent = data.description || '';
+    subtitleEl.textContent = data.description || "";
     if (data.image_url) {
-    imgEl.src = data.image_url;
+      imgEl.src = data.image_url;
     }
 
-    const link = (data.link_url || '').trim();
+    const link = (data.link_url || "").trim();
 
-    if (link){
-    btnEl.classList.remove('hidden');
+    if (link) {
+      btnEl.classList.remove("hidden");
 
-    if (btnEl.tagName.toLocaleLowerCase() === 'a'){
-        btnEl.href=link;
-        btnEl.target = '__blank';
-        btnEl.rel = 'noopener;'
-    } else {
-        btnEl.onclick =() => {
-            window.open(link, '__blank');
+      if (btnEl.tagName.toLocaleLowerCase() === "a") {
+        btnEl.href = link;
+        btnEl.target = "__blank";
+        btnEl.rel = "noopener;";
+      } else {
+        btnEl.onclick = () => {
+          window.open(link, "__blank");
         };
-    } 
+      }
     } else {
-    
-    btnEl.classList.add('hidden');
-    btnEl.removeAttribute('href');
-    btnEl.onclick = null;
+      btnEl.classList.add("hidden");
+      btnEl.removeAttribute("href");
+      btnEl.onclick = null;
     }
-    
-} catch (err) {
-    console.error('Failed to load announcement', err);
-    
+  } catch (err) {
+    console.error("Failed to load announcement", err);
+  }
 }
-}
-
-document.addEventListener('DOMContentLoaded', loadLatestAnnouncement);

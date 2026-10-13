@@ -1,0 +1,7 @@
+dist/
+android/
+node_modules/
+www/public/
+package-lock.json
+functions/lib/
+functions/node_modules/

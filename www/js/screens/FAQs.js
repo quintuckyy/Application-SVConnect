@@ -1,8 +1,7 @@
-import { auth } from "../services/firebase.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+import { whenSignedIn } from "../services/session.js";
 
 export function FAQs() {
-    return`
+  return `
         <!-- Top Nav -->
         <nav class="bg-gradient-to-r from-green-800 to-emerald-700 shadow-md sticky top-0 z-10">
             <div class="h-14 px-3 flex items-center justify-between">
@@ -533,65 +532,65 @@ export function FAQs() {
             </div>
             </section>
         </main>
-    `
+    `;
 }
 
 export function initFAQs() {
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            try {
-                const filterButtons = document.querySelectorAll(".faq-chip[data-filter]");
-                const faqItems = document.querySelectorAll(".faq-item[data-category]");
-                const searchInput = document.getElementById("faqSearch");
+  whenSignedIn(async (user) => {
+    if (user) {
+      try {
+        const filterButtons = document.querySelectorAll(".faq-chip[data-filter]");
+        const faqItems = document.querySelectorAll(".faq-item[data-category]");
+        const searchInput = document.getElementById("faqSearch");
 
-                let activeCategory = "all";
+        let activeCategory = "all";
 
-                function applyFilter() {
-                    const term = searchInput.value.trim().toLowerCase();
+        function applyFilter() {
+          const term = searchInput.value.trim().toLowerCase();
 
-                    faqItems.forEach((item) => {
-                        const cat = item.dataset.category;
-                        const text = item.textContent.toLowerCase();
+          faqItems.forEach((item) => {
+            const cat = item.dataset.category;
+            const text = item.textContent.toLowerCase();
 
-                        const matchCategory = activeCategory === "all" || cat === activeCategory;
-                        const matchSearch = term === "" || text.includes(term);
+            const matchCategory = activeCategory === "all" || cat === activeCategory;
+            const matchSearch = term === "" || text.includes(term);
 
-                        if (matchCategory && matchSearch) {
-                            item.classList.remove("hidden");
-                        } else {
-                            item.classList.add("hidden");
-                        }
-                    });
-                }
-
-                filterButtons.forEach((btn) => {
-                    btn.addEventListener("click", (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        
-                        activeCategory = btn.dataset.filter;
-
-                        // Reset all buttons to inactive state
-                        filterButtons.forEach((b) => {
-                            b.className = b.className.replace(/bg-\S+|text-\S+|shadow-\S+|border-\S+/g, '').trim();
-                            b.classList.add("bg-white", "text-gray-700", "border", "border-gray-200");
-                        });
-
-                        // Set clicked button to active state
-                        btn.className = btn.className.replace(/bg-\S+|text-\S+|shadow-\S+|border-\S+/g, '').trim();
-                        btn.classList.add("bg-emerald-700", "text-white", "shadow-sm", "border", "border-emerald-700");
-
-                        applyFilter();
-                    });
-                });
-
-                searchInput.addEventListener("input", applyFilter);
-
-                // Initial filter (All + empty search)
-                applyFilter();
-            } catch (err) {
-                console.log(err);
+            if (matchCategory && matchSearch) {
+              item.classList.remove("hidden");
+            } else {
+              item.classList.add("hidden");
             }
+          });
         }
-    });
+
+        filterButtons.forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            activeCategory = btn.dataset.filter;
+
+            // Reset all buttons to inactive state
+            filterButtons.forEach((b) => {
+              b.className = b.className.replace(/bg-\S+|text-\S+|shadow-\S+|border-\S+/g, "").trim();
+              b.classList.add("bg-white", "text-gray-700", "border", "border-gray-200");
+            });
+
+            // Set clicked button to active state
+            btn.className = btn.className.replace(/bg-\S+|text-\S+|shadow-\S+|border-\S+/g, "").trim();
+            btn.classList.add("bg-emerald-700", "text-white", "shadow-sm", "border", "border-emerald-700");
+
+            applyFilter();
+          });
+        });
+
+        searchInput.addEventListener("input", applyFilter);
+
+        // Initial filter (All + empty search)
+        applyFilter();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  });
 }

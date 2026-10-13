@@ -1,2 +1,7 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Normalise text files and check them out with LF on every OS, so Prettier's
+# format check gives the same result on Windows as on the Linux CI runners.
+* text=auto eol=lf
+
+# Windows scripts need CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf

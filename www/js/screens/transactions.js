@@ -1,10 +1,13 @@
-import { auth, db } from "../services/firebase.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";;
-import { getMemberID, getTransacRef, formatDate, showSpinner, hideSpinner } from "../services/firebaseFunctions.js";
-import { updateDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { db } from "../services/firebase.js";
+import { whenSignedIn } from "../services/session.js";
+
+import { getMemberID, getTransacRef, formatDate } from "../services/firebaseFunctions.js";
+import { showSpinner, hideSpinner, showError } from "../services/ui.js";
+import { escapeHtml } from "../lib/html.js";
+import { updateDoc, doc, getDoc } from "firebase/firestore";
 
 export function Transactions() {
-    return`
+  return `
     <!-- TOP NAV -->
     <nav class="bg-gradient-to-r from-green-800 to-emerald-700 shadow-md sticky top-0 z-10">
         <div class="h-16 px-3 flex items-center justify-between">
@@ -116,116 +119,99 @@ export function Transactions() {
                 </div>
             </div>
     </div>
-    `
+    `;
 }
 
 export function initTransactions() {
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            try {
-                showSpinner();
-                const transactionEmptyState = document.getElementById('transactionEmptyState');
-                const transacBody = document.getElementById('transacBody');
-                const memberID = await getMemberID(user);
-                const transacSnap = await getTransacRef(memberID);
-                hideSpinner();
-
-                if (!transacSnap || transacSnap.length === 0) {
-                    transactionEmptyState.classList.remove("hidden")
-                    transacBody.classList.add("hidden")
-                    return
-                }
-
-                transactionEmptyState.classList.add("hidden")
-                transacBody.classList.remove("hidden")
-
-                renderTransac(memberID)
-            } catch (err) {
-                console.log(err)
-            }
-        }
-    })
+  whenSignedIn(async (user) => {
+    try {
+      showSpinner();
+      const memberID = await getMemberID(user);
+      await renderTransac(memberID);
+    } catch (err) {
+      console.error("Loading transactions failed:", err);
+      showError("Your transactions couldn't be loaded. Check your connection and try again.");
+    } finally {
+      hideSpinner();
+    }
+  });
 }
 
-async function renderTransac(memberID) {
-    try {
-        const transacBody = document.getElementById('transacBody');
-        transacBody.innerHTML = ``;
-        const transacSnap = await getTransacRef(memberID);
+const peso = (value) =>
+  typeof value === "number"
+    ? `₱${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    : "—";
 
-        transacSnap.forEach(transac => {
-            const formattedDate = transac.createdAt.toDate().toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric"
-            })
-            const transacContainer = document.createElement('div')
-            transacContainer.innerHTML = `
-            <div onclick="openTransac('${transac.id}')" id="trans-${transac.id}" class="${transac.seen === false ? 'bg-gray-200 font-bold' : ''} mb-2 rounded-2xl shadow-sm border border-gray-200 p-4 flex gap-3">
-                
-                <!-- content -->
+async function renderTransac(memberID) {
+  const transacBody = document.getElementById("transacBody");
+  const emptyState = document.getElementById("transactionEmptyState");
+  const transacSnap = await getTransacRef(memberID);
+
+  emptyState.classList.toggle("hidden", transacSnap.length > 0);
+  transacBody.classList.toggle("hidden", transacSnap.length === 0);
+  transacBody.innerHTML = ``;
+
+  transacSnap.forEach((transac) => {
+    const formattedDate = transac.createdAt.toDate().toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    const id = escapeHtml(transac.id);
+    const transacContainer = document.createElement("div");
+    transacContainer.innerHTML = `
+            <div onclick="openTransac('${id}')" id="trans-${id}" class="${transac.seen === false ? "bg-gray-200 font-bold" : ""} mb-2 rounded-2xl shadow-sm border border-gray-200 p-4 flex gap-3">
                 <div class="flex-1 min-w-0">
                 <div class="flex items-start justify-between gap-2">
-                    <h2 class="text-sm font-bold text-gray-900 truncate">${transac.title}</h2>
+                    <h2 class="text-sm font-bold text-gray-900 truncate">${escapeHtml(transac.title)}</h2>
                     <div class="flex items-center gap-2 shrink-0">
                         <span class="text-[11px] text-gray-500">${formattedDate}</span>
-                        <span id="dot-${transac.id}" class="w-2 h-2 rounded-full ${transac.seen === false ? 'bg-emerald-600 font-semibold' : ''}"></span>
+                        <span id="dot-${id}" class="w-2 h-2 rounded-full ${transac.seen === false ? "bg-emerald-600 font-semibold" : ""}"></span>
                     </div>
                 </div>
 
-                <p class="text-xs text-gray-600 mt-1 leading-snug">${transac.message}</p>
+                <p class="text-xs text-gray-600 mt-1 leading-snug">${escapeHtml(transac.message)}</p>
                 </div>
             </div>
-            `
-            transacBody.appendChild(transacContainer);
-        })
+            `;
+    transacBody.appendChild(transacContainer);
+  });
 
-        window.openTransac = async function(transacID) {
-            const dot = document.getElementById(`dot-${transacID}`)
-            const trans = document.getElementById(`trans-${transacID}`)
-            try {
-                const loanRef = doc(db, "Members", memberID, "Transactions", transacID)
-                const querySnapshot = await getDoc(loanRef);
-                await updateDoc(loanRef, {seen : true})
-                dot.classList.remove('bg-emerald-600');
-                trans.classList.remove("bg-gray-200", "font-bold");
+  const overlay = document.getElementById("notification-detail-overlay");
+  const close = () => overlay.classList.add("hidden");
+  document.getElementById("closeBtn").onclick = close;
+  overlay.onclick = (e) => {
+    if (e.target === overlay) close();
+  };
 
-                document.getElementById('notification-detail-overlay').classList.remove('hidden');
-                const createdAt = querySnapshot.data().createdAt.toDate();
-                const formattedTime = createdAt.toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                    hour12: true     // 12-hour format with AM/PM
-                });
+  window.openTransac = async function (transacID) {
+    try {
+      const transacRef = doc(db, "Members", memberID, "Transactions", transacID);
+      const data = (await getDoc(transacRef)).data();
+      const createdAt = data.createdAt.toDate();
+      const formattedTime = createdAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 
-                const userData = {
-                    title: querySnapshot.data().title,
-                    dateTime: `${formatDate(querySnapshot.data().createdAt)} • ${formattedTime}`,
-                    message: querySnapshot.data().message,
-                    paymentDate: formatDate(querySnapshot.data().paymentDate),
-                    paymentAmt: `₱${querySnapshot.data().amount.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`,
-                    newBal: `₱${querySnapshot.data().newBal.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`
-                }
+      // Staff-posted transactions may not have every field; show a dash instead of failing
+      const details = {
+        title: data.title,
+        dateTime: `${formatDate(data.createdAt)} • ${formattedTime}`,
+        message: data.message,
+        paymentDate: data.paymentDate ? formatDate(data.paymentDate) : "—",
+        paymentAmt: peso(data.amount),
+        newBal: peso(data.newBal),
+      };
+      overlay.querySelectorAll("[data-field]").forEach((el) => {
+        el.textContent = details[el.dataset.field] ?? "—";
+      });
+      overlay.classList.remove("hidden");
 
-                document.querySelectorAll("[data-field]").forEach(el => {
-                    const field = el.dataset.field
-                    el.textContent = userData[field]
-                })
-
-                document.getElementById("closeBtn").addEventListener('click', function(e) {
-                    document.getElementById('notification-detail-overlay').classList.add('hidden');
-                })
-
-                document.getElementById('notification-detail-overlay').addEventListener('click', function(e) {
-                    if (e.target === this) {
-                        document.getElementById('notification-detail-overlay').classList.add('hidden');
-                    }
-                });
-
-            } catch (err) {
-                console.log(err)
-            } 
-        }
+      if (data.seen === false) {
+        await updateDoc(transacRef, { seen: true });
+        document.getElementById(`dot-${transacID}`)?.classList.remove("bg-emerald-600");
+        document.getElementById(`trans-${transacID}`)?.classList.remove("bg-gray-200", "font-bold");
+      }
     } catch (err) {
-        console.log(err)
+      console.error("Opening transaction failed:", err);
+      showError("This transaction couldn't be opened. Try again.");
     }
+  };
 }

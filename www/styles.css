@@ -1,0 +1,6 @@
+/* Font Awesome is bundled from npm so icons work offline in the Android app. */
+@import "@fortawesome/fontawesome-free/css/all.min.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

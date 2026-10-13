@@ -1,75 +1,63 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SVConnect</title>
 
     <script>
-      if (localStorage.darkMode === 'true') {
-        document.documentElement.classList.add('dark');
+      if (localStorage.darkMode === "true") {
+        document.documentElement.classList.add("dark");
       }
-    </script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = { darkMode: 'class' }
     </script>
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
-    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-
-    <!-- Capacitor Core (MUST come before other Capacitor plugins) -->
-    <script src="https://cdn.jsdelivr.net/npm/@capacitor/core@7/dist/capacitor.js"></script>
-    
-    <!-- Capacitor App Plugin -->
-    <script src="https://cdn.jsdelivr.net/npm/@capacitor/app@7/dist/plugin.js"></script>
-    <link rel="stylesheet" href="public/output.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-</head>
-<body class="bg-gray-100">
-
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="bg-gray-100">
     <!-- SPA root -->
     <div id="app"></div>
 
     <!-- Bottom Navigation (empty at first) -->
     <div id="bottom-nav" class="fixed bottom-0 inset-x-0 z-40"></div>
 
-    <div id="spinner" 
-        class="hidden fixed inset-0 flex items-center justify-center bg-black/20 z-[9999]">
-        <div class="w-10 h-10 border-4 border-gray-300 border-t-green-600 rounded-full animate-spin"></div>
+    <div id="spinner" class="hidden fixed inset-0 flex items-center justify-center bg-black/20 z-[9999]">
+      <div class="w-10 h-10 border-4 border-gray-300 border-t-green-600 rounded-full animate-spin"></div>
     </div>
 
     <!-- Success Message Overlay -->
-      <div id="successOverlay" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl transform transition-all">
-          <div class="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-center">
-            <div class="flex justify-center mb-3">
-              <div class="bg-white rounded-full p-3">
-                <i class="fas fa-check-circle text-green-600 text-4xl"></i>
-              </div>
+    <div id="successOverlay" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl transform transition-all">
+        <div class="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-center">
+          <div class="flex justify-center mb-3">
+            <div class="bg-white rounded-full p-3">
+              <i class="fas fa-check-circle text-green-600 text-4xl"></i>
             </div>
-            <h3 class="text-2xl font-bold text-white">Success!</h3>
           </div>
-          <div class="p-6 text-center">
-            <p id="successMessage" class="text-gray-700 text-lg mb-6"></p>
-            <button id="closeSuccess" class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all duration-200 active:scale-95 transform">
-              OK
-            </button>
-          </div>
+          <h3 class="text-2xl font-bold text-white">Success!</h3>
+        </div>
+        <div class="p-6 text-center">
+          <p id="successMessage" class="text-gray-700 text-lg mb-6"></p>
+          <button
+            id="closeSuccess"
+            class="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all duration-200 active:scale-95 transform"
+          >
+            OK
+          </button>
         </div>
       </div>
+    </div>
 
     <script>
-      window.toggleDarkMode = function() {
+      window.toggleDarkMode = function () {
         const html = document.documentElement;
-        const isDark = html.classList.toggle('dark');
+        const isDark = html.classList.toggle("dark");
         localStorage.darkMode = isDark;
         return isDark;
-      }
+      };
     </script>
 
     <!-- JS scripts -->
     <script src="./js/app.js" type="module"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</body>
+  </body>
 </html>

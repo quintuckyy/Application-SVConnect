@@ -1,10 +1,18 @@
-import { auth, db } from "../services/firebase.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { getMemberID, getMemberRef, getSavingsRef, getApprovedLoan, getPaymentRef, showSpinner, hideSpinner } from "../services/firebaseFunctions.js";
-import { doc, updateDoc, addDoc, collection, setDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { whenSignedIn } from "../services/session.js";
+import { assessLoan } from "../lib/loanStatus.js";
+import { escapeHtml } from "../lib/html.js";
+
+import {
+  getMemberID,
+  getMemberRef,
+  getSavingsRef,
+  getApprovedLoan,
+  getPaymentRef,
+} from "../services/firebaseFunctions.js";
+import { showSpinner, hideSpinner, showError } from "../services/ui.js";
 
 export function LoanOverview() {
-    return`
+  return `
     <!-- Pull to Refresh Indicator -->
     <div id="pullRefreshIndicator" class="fixed top-0 left-0 right-0 flex justify-center pointer-events-none z-[9998] transition-all duration-300" style="transform: translateY(-100px); opacity: 0;">
         <div class="bg-white rounded-full shadow-lg p-3 mt-20">
@@ -204,226 +212,225 @@ export function LoanOverview() {
         </button>
     </div>
 </main>
-    `
+    `;
 }
 
 export function initLoanOverview() {
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            initPullToRefresh()
-            showSpinner();
-            const balanceCard = document.getElementById('balanceCard')
-            const loanDetailsCard = document.getElementById('loanDetailsCard')
-            const balanceEmptyState = document.getElementById('balanceEmptyState')
-            const loanDetailsEmptyState = document.getElementById('loanDetailsEmptyState')
+  whenSignedIn(async (user) => {
+    if (user) {
+      initPullToRefresh();
+      showSpinner();
+      const balanceCard = document.getElementById("balanceCard");
+      const loanDetailsCard = document.getElementById("loanDetailsCard");
+      const balanceEmptyState = document.getElementById("balanceEmptyState");
+      const loanDetailsEmptyState = document.getElementById("loanDetailsEmptyState");
 
-            const memberID = await getMemberID(user);
-            const docSnap = await getMemberRef(memberID);
-            const loanDoc = await getApprovedLoan(memberID);
-            document.getElementById("nameID").textContent = `${docSnap.displayName} • ID: ${memberID}`
-            hideSpinner();
-            if (!loanDoc || loanDoc.length === 0) {
-                balanceEmptyState.classList.remove("hidden")
-                loanDetailsEmptyState.classList.remove("hidden")
-                balanceCard.classList.add("hidden")
-                loanDetailsCard.classList.add("hidden")
-                return
-            }
+      const memberID = await getMemberID(user);
+      const docSnap = await getMemberRef(memberID);
+      const loanDoc = await getApprovedLoan(memberID);
+      document.getElementById("nameID").textContent = `${docSnap.displayName} • ID: ${memberID}`;
+      hideSpinner();
+      if (!loanDoc || loanDoc.length === 0) {
+        balanceEmptyState.classList.remove("hidden");
+        loanDetailsEmptyState.classList.remove("hidden");
+        balanceCard.classList.add("hidden");
+        loanDetailsCard.classList.add("hidden");
+        return;
+      }
 
-            balanceEmptyState.classList.add("hidden")
-            loanDetailsEmptyState.classList.add("hidden")
-            balanceCard.classList.remove("hidden")
-            loanDetailsCard.classList.remove("hidden")
-            
-            try {
-                checkOverDue(memberID)
-                if (!loanDoc) return;//if there are no approvedLoans
-                const savingsDoc = await getSavingsRef(memberID)
-                const term = parseInt(loanDoc.loanTerms)
-                const rawInterest = Number(loanDoc.monthlyInterest);
-                const cleanValue = Math.abs(rawInterest);
+      balanceEmptyState.classList.add("hidden");
+      loanDetailsEmptyState.classList.add("hidden");
+      balanceCard.classList.remove("hidden");
+      loanDetailsCard.classList.remove("hidden");
 
-                const dateIndex = parseInt(loanDoc.dueDateIndex)
-                if (dateIndex <= term) {
-                    document.getElementById("nextDue").textContent = `${loanDoc.dueDate[dateIndex]}`
-                }
+      try {
+        checkOverDue(memberID);
+        if (!loanDoc) return; //if there are no approvedLoans
+        const savingsDoc = await getSavingsRef(memberID);
+        const term = parseInt(loanDoc.loanTerms);
+        const rawInterest = Number(loanDoc.monthlyInterest);
+        const cleanValue = Math.abs(rawInterest);
 
-                const userData={
-                    remainingBal: `₱${Number(loanDoc.remainingBalance).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`,
-                    totalLoan: `Total Loan: ₱${Number(loanDoc.totalLoan).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`,
-                    loanStat: loanDoc.loanStatus,
-                    loanType: loanDoc.loanType,
-                    monthInterest: `₱${cleanValue.toLocaleString("en-US", {minimumFractionDigits: 2,maximumFractionDigits: 2,})}`,
-                    startDate: loanDoc.startDate.toDate().toLocaleDateString(),
-                    loanTerm: `${term} Months`,
-                    interestRate: `${Number(loanDoc.interestRate*100).toFixed(2)}%p.a.`,
-                    monthlyPay: `₱${Number(loanDoc.monthlyPayment).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`,
-                    totalPaid: `₱${Number(loanDoc.totalPaid).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`,
-                    penalty: `₱${Number(loanDoc.penalties).toFixed(2)}`,
-                    savingsBuildUp: `₱${Number(savingsDoc.savingsBuildUp).toFixed(2)}`,
-                    shareCapitalBuildUp: `₱${Number(savingsDoc.capitalBuildUp).toFixed(2)}`,
-                    principal: `₱${Number(loanDoc.principal).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}`,
-                    payments: loanDoc.dueDateIndex,
-                    monthsRemaining: loanDoc.monthsRemaining
-                };
-
-                document.querySelectorAll("[data-field]").forEach(el => {
-                    const field = el.dataset.field
-                    el.textContent = userData[field]
-                })
-
-                const totalPayment = Number(loanDoc.totalPayment);//logical error, should be based from totalLoan with interest
-                const totalPaid = Number(loanDoc.totalPaid);
-                const progressPercentage = (totalPaid / totalPayment) * 100;
-
-                const progressBar = document.getElementById("progressBar");
-                progressBar.style.background = `linear-gradient(90deg, #ffffff ${progressPercentage}%, rgba(255,255,255,0.3) ${progressPercentage}%)`;
-
-                document.getElementById("progressText").textContent = `${progressPercentage.toFixed(1)}% Completed`;
-                renderPayHistory(memberID)
-            } catch (err) {
-                console.log(err)
-            }
+        const dateIndex = parseInt(loanDoc.dueDateIndex);
+        if (dateIndex <= term) {
+          document.getElementById("nextDue").textContent = `${loanDoc.dueDate[dateIndex]}`;
         }
-    })
+
+        const userData = {
+          remainingBal: `₱${Number(loanDoc.remainingBalance).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          totalLoan: `Total Loan: ₱${Number(loanDoc.totalLoan).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          loanStat: loanDoc.loanStatus,
+          loanType: loanDoc.loanType,
+          monthInterest: `₱${cleanValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          startDate: loanDoc.startDate.toDate().toLocaleDateString(),
+          loanTerm: `${term} Months`,
+          interestRate: `${Number(loanDoc.interestRate * 100).toFixed(2)}%p.a.`,
+          monthlyPay: `₱${Number(loanDoc.monthlyPayment).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          totalPaid: `₱${Number(loanDoc.totalPaid).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          penalty: `₱${Number(loanDoc.penalties).toFixed(2)}`,
+          savingsBuildUp: `₱${Number(savingsDoc.savingsBuildUp).toFixed(2)}`,
+          shareCapitalBuildUp: `₱${Number(savingsDoc.capitalBuildUp).toFixed(2)}`,
+          principal: `₱${Number(loanDoc.principal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          payments: loanDoc.dueDateIndex,
+          monthsRemaining: loanDoc.monthsRemaining,
+        };
+
+        document.querySelectorAll("[data-field]").forEach((el) => {
+          const field = el.dataset.field;
+          el.textContent = userData[field];
+        });
+
+        const totalPayment = Number(loanDoc.totalPayment); //logical error, should be based from totalLoan with interest
+        const totalPaid = Number(loanDoc.totalPaid);
+        const progressPercentage = (totalPaid / totalPayment) * 100;
+
+        const progressBar = document.getElementById("progressBar");
+        progressBar.style.background = `linear-gradient(90deg, #ffffff ${progressPercentage}%, rgba(255,255,255,0.3) ${progressPercentage}%)`;
+
+        document.getElementById("progressText").textContent = `${progressPercentage.toFixed(1)}% Completed`;
+        renderPayHistory(memberID);
+      } catch (err) {
+        console.error(err);
+        hideSpinner();
+        showError("Your loan details couldn't be loaded. Check your connection and try again.");
+      }
+    }
+  });
 }
 
 async function renderPayHistory(memberID) {
-    const paymentBody = document.getElementById('paymentBody')
-    const emptyState = document.getElementById('emptyState')
-    paymentBody.innerHTML = ``;
-    const paymentSnap = await getPaymentRef(memberID)
+  const paymentBody = document.getElementById("paymentBody");
+  const emptyState = document.getElementById("emptyState");
+  paymentBody.innerHTML = ``;
+  const paymentSnap = await getPaymentRef(memberID);
 
-    if (!paymentSnap || paymentSnap.length === 0) {
-        emptyState.classList.remove("hidden")
-        paymentBody.classList.add("hidden")
-        return
-    }
+  if (!paymentSnap || paymentSnap.length === 0) {
+    emptyState.classList.remove("hidden");
+    paymentBody.classList.add("hidden");
+    return;
+  }
 
-    emptyState.classList.add("hidden")
-    paymentBody.classList.remove("hidden")
+  emptyState.classList.add("hidden");
+  paymentBody.classList.remove("hidden");
 
-    paymentSnap.forEach(pay => {
-        const formattedDate = pay.paymentDate.toDate().toLocaleDateString("en-US", {
-            day: "numeric",
-            month: "short",
-            year: "numeric"
-        })
-        const paymentContainer = document.createElement('div')
-        paymentContainer.innerHTML = `
+  paymentSnap.forEach((pay) => {
+    const formattedDate = pay.paymentDate.toDate().toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+    const paymentContainer = document.createElement("div");
+    paymentContainer.innerHTML = `
         <div class="space-y-3">
             <div class="flex justify-between items-center py-2">
                 <div>
                     <p class="font-semibold text-gray-900">${formattedDate}</p>
-                    <p class="text-xs text-gray-500">Payment ${pay.paymentIndex+1}</p>
+                    <p class="text-xs text-gray-500">Payment ${escapeHtml(Number(pay.paymentIndex) + 1)}</p>
                 </div>
                 <div class="text-right">
-                    <p class="font-semibold text-green-600">₱${pay.paymentAmt.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
-                    <p class="text-sm text-gray-500">Remaining: ₱${Number(pay.remainingBal).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
+                    <p class="font-semibold text-green-600">₱${pay.paymentAmt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p class="text-sm text-gray-500">Remaining: ₱${Number(pay.remainingBal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                 </div>
             </div>
         </div>
-        `
-        paymentBody.appendChild(paymentContainer)
-    })
+        `;
+    paymentBody.appendChild(paymentContainer);
+  });
 }
 
 async function checkOverDue(memberID) {
   try {
     const loanDoc = await getApprovedLoan(memberID);
-    if (!loanDoc) return;//if there are no approvedLoans
-    const dueDateIndex = loanDoc.dueDateIndex;
-    const dueDate = new Date(loanDoc.dueDate[dueDateIndex]);
-    const today = loanDoc.TESTDATE.toDate();
-    const isOverDue = today > dueDate;
-    
-    if (isOverDue) {
+    if (!loanDoc) return; //if there are no approvedLoans
+    const payments = await getPaymentRef(memberID);
+    if (assessLoan(loanDoc, payments, new Date()).overdue) {
       alert("⚠️Loan Overdue.");
     }
   } catch (err) {
-    console.log(err);
+    console.error("Overdue check failed:", err);
   }
 }
 
 function initPullToRefresh() {
-    const mainContent = document.getElementById('mainContent');
-    const indicator = document.getElementById('pullRefreshIndicator');
-    let startY = 0;
-    let currentY = 0;
-    let isPulling = false;
-    const pullThreshold = 80; //distance needed to trigger refresh
+  const mainContent = document.getElementById("mainContent");
+  const indicator = document.getElementById("pullRefreshIndicator");
+  let startY = 0;
+  let currentY = 0;
+  let isPulling = false;
+  const pullThreshold = 80; //distance needed to trigger refresh
 
-    mainContent.addEventListener('touchstart', (e) => {
-        //only enable pull-to-refresh if at the top of the page
-        if (window.scrollY === 0) {
-            startY = e.touches[0].clientY;
-            isPulling = true;
-        }
-    }, { passive: true });
+  mainContent.addEventListener(
+    "touchstart",
+    (e) => {
+      //only enable pull-to-refresh if at the top of the page
+      if (window.scrollY === 0) {
+        startY = e.touches[0].clientY;
+        isPulling = true;
+      }
+    },
+    { passive: true },
+  );
 
-    mainContent.addEventListener('touchmove', (e) => {
-        if (!isPulling) return;
+  mainContent.addEventListener(
+    "touchmove",
+    (e) => {
+      if (!isPulling) return;
 
-        currentY = e.touches[0].clientY;
-        const pullDistance = currentY - startY;
+      currentY = e.touches[0].clientY;
+      const pullDistance = currentY - startY;
 
-        //only show indicator when pulling down
-        if (pullDistance > 0 && window.scrollY === 0) {
-            // Don't prevent default to allow normal scrolling
-            
-            //calculate transform and opacity based on pull distance
-            const progress = Math.min(pullDistance / pullThreshold, 1);
-            const translateY = Math.min(pullDistance * 0.5, 60);
-            
-            // Remove transition during drag for smooth movement
-            indicator.style.transition = 'none';
-            indicator.style.transform = `translateY(${translateY - 100}px)`;
-            indicator.style.opacity = progress;
-        }
-    }, { passive: true });
+      //only show indicator when pulling down
+      if (pullDistance > 0 && window.scrollY === 0) {
+        // Don't prevent default to allow normal scrolling
 
-    mainContent.addEventListener('touchend', async () => {
-        if (!isPulling) return;
+        //calculate transform and opacity based on pull distance
+        const progress = Math.min(pullDistance / pullThreshold, 1);
+        const translateY = Math.min(pullDistance * 0.5, 60);
 
-        const pullDistance = currentY - startY;
-        
-        // Re-enable transitions for smooth animation
-        indicator.style.transition = 'all 0.3s ease';
-        
-        // Reset pulling state
-        isPulling = false;
-        
-        // If pulled past threshold, trigger refresh
-        if (pullDistance > pullThreshold && window.scrollY === 0) {
-            indicator.style.transform = 'translateY(10px)';
-            indicator.style.opacity = '1';
-            
-            try {
-                // Refresh the page
-                await refreshHomePage();
-            } catch (error) {
-                console.error('Refresh failed:', error);
-            }
-            
-            // Hide indicator after refresh, then reload
-            setTimeout(() => {
-                indicator.style.transform = 'translateY(-100px)';
-                indicator.style.opacity = '0';
-                
-                // Reload after animation completes
-                setTimeout(() => {
-                    location.reload();
-                }, 300);
-            }, 500);
-        } else {
-            // Reset indicator immediately if threshold not met
-            indicator.style.transform = 'translateY(-100px)';
-            indicator.style.opacity = '0';
-        }
+        // Remove transition during drag for smooth movement
+        indicator.style.transition = "none";
+        indicator.style.transform = `translateY(${translateY - 100}px)`;
+        indicator.style.opacity = progress;
+      }
+    },
+    { passive: true },
+  );
 
-        startY = 0;
-        currentY = 0;
-    });
+  mainContent.addEventListener("touchend", async () => {
+    if (!isPulling) return;
+
+    const pullDistance = currentY - startY;
+
+    // Re-enable transitions for smooth animation
+    indicator.style.transition = "all 0.3s ease";
+
+    // Reset pulling state
+    isPulling = false;
+
+    // If pulled past threshold, trigger refresh
+    if (pullDistance > pullThreshold && window.scrollY === 0) {
+      indicator.style.transform = "translateY(10px)";
+      indicator.style.opacity = "1";
+
+      // Hide the indicator, then reload the page to fetch fresh loan data
+      setTimeout(() => {
+        indicator.style.transform = "translateY(-100px)";
+        indicator.style.opacity = "0";
+
+        // Reload after animation completes
+        setTimeout(() => {
+          location.reload();
+        }, 300);
+      }, 500);
+    } else {
+      // Reset indicator immediately if threshold not met
+      indicator.style.transform = "translateY(-100px)";
+      indicator.style.opacity = "0";
+    }
+
+    startY = 0;
+    currentY = 0;
+  });
 }
 /*async function checkCompletion(memberID, loanID) {
     try {

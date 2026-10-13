@@ -1,10 +1,12 @@
 import { auth } from "../services/firebase.js";
-import { onAuthStateChanged, updatePassword, reauthenticateWithCredential, EmailAuthProvider, signOut, deleteUser } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { getMemberID, getMemberRef, updateName, deleteUserAcc, createNotification, showSpinner, hideSpinner, showSuccess } from "../services/firebaseFunctions.js";
-import { verifyMPIN } from "../login.js";
+import { whenSignedIn } from "../services/session.js";
+import { updatePassword, reauthenticateWithCredential, EmailAuthProvider, signOut } from "firebase/auth";
+import { getMemberID, getMemberRef, updateName, createNotification } from "../services/firebaseFunctions.js";
+import { showSpinner, hideSpinner, showSuccess, showError } from "../services/ui.js";
+import { deleteMyAccount } from "../services/api.js";
 
 export function Settings() {
-    return`
+  return `
     <nav class="mb-0 bg-gradient-to-r from-green-800 to-emerald-700 h-15 shadow md:flex md:items-center md:justify-between sticky top-0 z-50">
         <div class="h-16 flex justify-center items-center w-full py-3">
 
@@ -116,225 +118,232 @@ export function Settings() {
         </div>
     </div>
     <div class="h-20"></div>
-    `
+    `;
 }
 
 export function initSettings() {
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            try {
-                showSpinner();
-                setupPasswordToggle('toggleCurrentPassword', 'currentPassword');
-                setupPasswordToggle('toggleNewPassword', 'newPassword');
-                setupPasswordToggle('toggleConfirmPassword', 'confirmPassword');
-                const memberID = await getMemberID(user);
-                const docSnap = await getMemberRef(memberID);
+  whenSignedIn(async (user) => {
+    if (user) {
+      try {
+        showSpinner();
+        setupPasswordToggle("toggleCurrentPassword", "currentPassword");
+        setupPasswordToggle("toggleNewPassword", "newPassword");
+        setupPasswordToggle("toggleConfirmPassword", "confirmPassword");
+        const memberID = await getMemberID(user);
+        const docSnap = await getMemberRef(memberID);
 
-                const saveBtn = document.getElementById("changeNameBtn");
-                document.getElementById("userName").textContent = docSnap.displayName
-                document.getElementById("displayNameInput").value = docSnap.displayName
-                hideSpinner();
+        const saveBtn = document.getElementById("changeNameBtn");
+        document.getElementById("userName").textContent = docSnap.displayName;
+        document.getElementById("displayNameInput").value = docSnap.displayName;
+        hideSpinner();
 
-                saveBtn.addEventListener("click", async (e) => {
-                    e.preventDefault()
-                    const userAppName = document.getElementById("displayNameInput").value
+        saveBtn.addEventListener("click", async (e) => {
+          e.preventDefault();
+          const userAppName = document.getElementById("displayNameInput").value;
 
-                    if (userAppName === "") {
-                        alert("Name cannot be empty.");
-                        return;
-                    }
+          if (userAppName === "") {
+            alert("Name cannot be empty.");
+            return;
+          }
 
-                    let result = confirm("Are you sure you want to change your display name?")
-                    if (result) {
-                        await updateName(memberID, userAppName);
-                        showSuccess("Your app name has been changed.")
-                        document.getElementById("userName").textContent = userAppName;
-                    }
-                })
+          let result = confirm("Are you sure you want to change your display name?");
+          if (result) {
+            await updateName(memberID, userAppName);
+            showSuccess("Your app name has been changed.");
+            document.getElementById("userName").textContent = userAppName;
+          }
+        });
 
-                const button = document.getElementById("togglePasswordBtn");
-                const section = document.getElementById("passwordSection");
-                const icon = document.getElementById("arrowIcon");
+        const button = document.getElementById("togglePasswordBtn");
+        const section = document.getElementById("passwordSection");
+        const icon = document.getElementById("arrowIcon");
 
-                button.addEventListener("click", async (e) => {
-                    e.preventDefault()
-                    section.classList.toggle("hidden");
-                    icon.name = section.classList.contains("hidden")
-                        ? "chevron-forward-outline"
-                        : "chevron-down-outline";
-                });
+        button.addEventListener("click", async (e) => {
+          e.preventDefault();
+          section.classList.toggle("hidden");
+          icon.name = section.classList.contains("hidden") ? "chevron-forward-outline" : "chevron-down-outline";
+        });
 
-                const passwordSaveBtn = document.getElementById("passForm");
-                const deleteBtn = document.getElementById("deleteBtn");
-                passwordSaveBtn.addEventListener("submit", async (e) => {
-                    e.preventDefault();
-                    await changePassword(user)
-                    
-                });
+        const passwordSaveBtn = document.getElementById("passForm");
+        const deleteBtn = document.getElementById("deleteBtn");
+        passwordSaveBtn.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          await changePassword(user);
+        });
 
-                deleteBtn.addEventListener("click", async (e) => {
-                    e.preventDefault()
-                    const result = confirm("Are you sure you want to delete your account? This action will permanently remove your account, including your registered email and MPIN. All associated data will be deleted and cannot be recovered.")
-                    if (result) {
-                        await deleteAccount(memberID)
-                    }
-                })
-
-            } catch (err) {
-                console.log(err)
-            }
-        }
-    })
+        deleteBtn.addEventListener("click", async (e) => {
+          e.preventDefault();
+          const result = confirm(
+            "Are you sure you want to delete your account? This action will permanently remove your account, including your registered email and MPIN. All associated data will be deleted and cannot be recovered.",
+          );
+          if (result) {
+            await deleteAccount(memberID);
+          }
+        });
+      } catch (err) {
+        console.error(err);
+        hideSpinner();
+        showError("Your settings couldn't be loaded. Check your connection and try again.");
+      }
+    }
+  });
 }
 
 async function changePassword(user) {
-    const memberID = await getMemberID(user);
-    const currentPass = document.getElementById("currentPassword").value.trim();
-    const newPass = document.getElementById("newPassword").value.trim();
-    const confirmPassword = document.getElementById("confirmPassword").value.trim();
-    const msg = document.getElementById("msg");
+  const memberID = await getMemberID(user);
+  const currentPass = document.getElementById("currentPassword").value.trim();
+  const newPass = document.getElementById("newPassword").value.trim();
+  const confirmPassword = document.getElementById("confirmPassword").value.trim();
+  const msg = document.getElementById("msg");
 
-    try {
-        msg.textContent = "";
+  try {
+    msg.textContent = "";
 
-        if (newPass.length < 6) {
-            msg.textContent = "Password must be at least 6 characters.";
-            document.getElementById("newPassword").classList.add('border-red-400', 'ring-2', 'ring-red-400', 'ring-opacity-50')
-            document.getElementById("confirmPassword").classList.add('border-red-400', 'ring-2', 'ring-red-400', 'ring-opacity-50')
-            return;
-        }
-
-        document.getElementById("newPassword").classList.remove('border-red-400', 'ring-2', 'ring-red-400', 'ring-opacity-50')
-        document.getElementById("confirmPassword").classList.remove('border-red-400', 'ring-2', 'ring-red-400', 'ring-opacity-50')
-
-        if (newPass !== confirmPassword) {
-            msg.textContent = "Passwords do not match.";
-            document.getElementById("currentPassword").classList.add('border-red-400', 'ring-2', 'ring-red-400', 'ring-opacity-50')
-            document.getElementById("newPassword").classList.add('border-red-400', 'ring-2', 'ring-red-400', 'ring-opacity-50')
-            document.getElementById("confirmPassword").classList.add('border-red-400', 'ring-2', 'ring-red-400', 'ring-opacity-50')
-            return
-        }
-
-        document.getElementById("newPassword").classList.remove('border-red-400', 'ring-2', 'ring-red-400', 'ring-opacity-50')
-        document.getElementById("confirmPassword").classList.remove('border-red-400', 'ring-2', 'ring-red-400', 'ring-opacity-50')
-
-        if (newPass == currentPass) {
-            msg.textContent = "New password must be different from current password.";
-            document.getElementById("newPassword").classList.add('border-red-400', 'ring-2', 'ring-red-400', 'ring-opacity-50')
-            return
-        }
-
-        document.getElementById("newPassword").classList.remove('border-red-400', 'ring-2', 'ring-red-400', 'ring-opacity-50')
-
-        // 1. Re-authenticate the user
-        const credential = EmailAuthProvider.credential(
-            user.email,
-            currentPass
-        );
-        showSpinner();
-        await reauthenticateWithCredential(user, credential);
-        await updatePassword(user, newPass);
-        await createNotification(memberID,
-            "Password Reset Successful",
-            "You have successfully reset your password.",
-            "passwordReset"
-        )
-        hideSpinner();
-        showSuccess("Your password has been updated. Please Log-in")
-        await logout()
-
-    } catch (err) {
-        console.log(err)
-        document.getElementById("currentPassword").classList.add('border-red-400', 'ring-2', 'ring-red-400', 'ring-opacity-50')
-        alert("Error updating password: The current password you entered is incorrect");
-        hideSpinner();
+    if (newPass.length < 6) {
+      msg.textContent = "Password must be at least 6 characters.";
+      document
+        .getElementById("newPassword")
+        .classList.add("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
+      document
+        .getElementById("confirmPassword")
+        .classList.add("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
+      return;
     }
+
+    document
+      .getElementById("newPassword")
+      .classList.remove("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
+    document
+      .getElementById("confirmPassword")
+      .classList.remove("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
+
+    if (newPass !== confirmPassword) {
+      msg.textContent = "Passwords do not match.";
+      document
+        .getElementById("currentPassword")
+        .classList.add("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
+      document
+        .getElementById("newPassword")
+        .classList.add("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
+      document
+        .getElementById("confirmPassword")
+        .classList.add("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
+      return;
+    }
+
+    document
+      .getElementById("newPassword")
+      .classList.remove("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
+    document
+      .getElementById("confirmPassword")
+      .classList.remove("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
+
+    if (newPass == currentPass) {
+      msg.textContent = "New password must be different from current password.";
+      document
+        .getElementById("newPassword")
+        .classList.add("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
+      return;
+    }
+
+    document
+      .getElementById("newPassword")
+      .classList.remove("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
+
+    // 1. Re-authenticate the user
+    const credential = EmailAuthProvider.credential(user.email, currentPass);
+    showSpinner();
+    await reauthenticateWithCredential(user, credential);
+    await updatePassword(user, newPass);
+    await createNotification(
+      memberID,
+      "Password Reset Successful",
+      "You have successfully reset your password.",
+      "passwordReset",
+    );
+    hideSpinner();
+    showSuccess("Your password has been updated. Please Log-in");
+    await logout();
+  } catch (err) {
+    console.error(err);
+    document
+      .getElementById("currentPassword")
+      .classList.add("border-red-400", "ring-2", "ring-red-400", "ring-opacity-50");
+    alert("Error updating password: The current password you entered is incorrect");
+    hideSpinner();
+  }
 }
 
 async function deleteAccount(memberID) {
-    const user = auth.currentUser;
-    try {
-        //authenticate user first for security
-        const currentPassword = prompt("Please enter your current password to confirm:");
-        if (!currentPassword) {
-            alert("Current Password is required to proceed.");
-            return;
-        }
-
-        const credential = EmailAuthProvider.credential(user.email, currentPassword);
-        await reauthenticateWithCredential(user, credential);
-
-        const userInputMPIN = prompt("Please enter your MPIN to continue:");
-        if (!userInputMPIN) {
-            alert("MPIN is required to proceed.");
-            return;
-        }
-
-        //verify MPIN
-        showSpinner();
-        const isValid = await verifyMPIN(memberID, userInputMPIN);
-        if (!isValid) {
-            alert("Incorrect MPIN.");
-            hideSpinner();
-            return;
-        }
-
-        //delete user
-        await deleteUser(user);
-        await deleteUserAcc(memberID)
-        await createNotification(memberID,
-            "Gmail Removed",
-            "Your Gmail account has been removed from the system.",
-            "gmailRemoved"
-        )
-        
-        showSuccess("Your account has been deleted successfully. Please Log-in");
-        hideSpinner();
-        setTimeout(() => {
-            window.location.href = "index.html"; // redirect after deletion
-        }, 2500);
-    } catch (error) {
-        console.error(error);
-
-        if (error.code === "auth/wrong-password") {
-            alert("The current password you entered is incorrect.");
-        } else if (error.code === "auth/requires-recent-login") {
-            alert("Please log in again to delete your account.");
-        } else {
-            alert("The current password you entered is incorrect.");
-        }
+  const user = auth.currentUser;
+  try {
+    //authenticate user first for security
+    const currentPassword = prompt("Please enter your current password to confirm:");
+    if (!currentPassword) {
+      alert("Current Password is required to proceed.");
+      return;
     }
+
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(user, credential);
+
+    const userInputMPIN = prompt("Please enter your MPIN to continue:");
+    if (!userInputMPIN) {
+      alert("MPIN is required to proceed.");
+      return;
+    }
+
+    showSpinner();
+    // Checks the MPIN, unlinks the login from the member record, then deletes the login
+    await deleteMyAccount(memberID, userInputMPIN.trim());
+
+    hideSpinner();
+    showSuccess("Your account has been deleted successfully. Please Log-in");
+    setTimeout(() => {
+      window.location.href = "index.html"; // redirect after deletion
+    }, 2500);
+  } catch (error) {
+    console.error(error);
+    hideSpinner();
+
+    if (error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
+      alert("The current password you entered is incorrect.");
+    } else if (error.code === "auth/requires-recent-login") {
+      alert("Please log in again to delete your account.");
+    } else {
+      alert(error.message || "Your account could not be deleted. Please try again.");
+    }
+  }
 }
 
 async function logout() {
-    try {
-        await signOut(auth);
-        setTimeout(() => {
-            window.location.href = "index.html";
-        }, 3000);
-    } catch (error) {
-        console.error(error);
-    }
+  try {
+    await signOut(auth);
+    setTimeout(() => {
+      window.location.href = "index.html";
+    }, 3000);
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 function setupPasswordToggle(toggleBtnId, passwordInputId) {
-    const toggleBtn = document.getElementById(toggleBtnId);
-    const passwordInput = document.getElementById(passwordInputId);
-    
-    if (toggleBtn && passwordInput) {
-        toggleBtn.addEventListener('click', function() {
-            const icon = this.querySelector('i');
-            
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                passwordInput.type = 'password';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
-        });
-    }
-}
+  const toggleBtn = document.getElementById(toggleBtnId);
+  const passwordInput = document.getElementById(passwordInputId);
 
+  if (toggleBtn && passwordInput) {
+    toggleBtn.addEventListener("click", function () {
+      const icon = this.querySelector("i");
+
+      if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+        icon.classList.remove("fa-eye");
+        icon.classList.add("fa-eye-slash");
+      } else {
+        passwordInput.type = "password";
+        icon.classList.remove("fa-eye-slash");
+        icon.classList.add("fa-eye");
+      }
+    });
+  }
+}

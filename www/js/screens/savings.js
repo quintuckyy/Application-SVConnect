@@ -1,9 +1,10 @@
-import { auth } from "../services/firebase.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { getMemberID, getMemberRef, getSavingsRef, showSpinner, hideSpinner } from "../services/firebaseFunctions.js";
+import { whenSignedIn } from "../services/session.js";
+
+import { getMemberID, getMemberRef, getSavingsRef } from "../services/firebaseFunctions.js";
+import { showSpinner, hideSpinner, showError } from "../services/ui.js";
 
 export function Savings() {
-    return `
+  return `
         <!-- Header -->
         <div class="bg-gradient-to-r from-green-800 to-emerald-700 text-white px-4 pt-6 pb-8">
             <div class="flex items-center justify-between mb-6">
@@ -126,50 +127,53 @@ export function Savings() {
             </div>
             </div>
         </div>
-    `
+    `;
 }
 
 export function initSavingsOverview() {
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            try {
-                showSpinner();
-                const memberID = await getMemberID(user);
-                const docSnap = await getMemberRef(memberID);
-                const savingsDoc = await getSavingsRef(memberID);
-                const membershipDate = docSnap.createdAt
-                const formattedDate = membershipDate.toDate().toLocaleDateString("en-US", {
-                    month: "short",
-                    year: "numeric"
-                })
+  whenSignedIn(async (user) => {
+    if (user) {
+      try {
+        showSpinner();
+        const memberID = await getMemberID(user);
+        const docSnap = await getMemberRef(memberID);
+        const savingsDoc = await getSavingsRef(memberID);
+        const membershipDate = docSnap.createdAt;
+        const formattedDate = membershipDate.toDate().toLocaleDateString("en-US", {
+          month: "short",
+          year: "numeric",
+        });
 
-                const userData = {
-                    name: docSnap.displayName,
-                    userID: `ID: ${memberID}`,
-                    userProfile: docSnap.displayName.split(' ').map(n => n[0]).join(''),
-                    accNum: savingsDoc.accountNumber,
-                    accType: savingsDoc.accountType,
-                    savingsStat: savingsDoc.status,
-                    currentBal: `₱${Number(savingsDoc.balance).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
-                    interestRate: `${savingsDoc.interestRate * 100}.00% interest p.a.`,
-                    dateOpened: `Opened: ${savingsDoc.createdAt.toDate().toLocaleDateString()}`,
-                    shareCapital: `₱${Number(docSnap.shareCapital).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
-                    totalAssets: `₱${Number(savingsDoc.totalAssets).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
-                    disbursedAmount: `₱${Number(savingsDoc.disbursedAmount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
-                    parValue: `₱${Number(savingsDoc.ParValue).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
-                    dividends: `${savingsDoc.dividends * 100}%`,
-                    shares: savingsDoc.numberOfShares,
-                    memberSince: formattedDate,
-                    savingsBuildUp: `₱${Number(savingsDoc.savingsBuildUp).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
-                    capitalBuildUp: `₱${Number(savingsDoc.capitalBuildUp).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
-                };
+        const userData = {
+          name: docSnap.displayName,
+          userID: `ID: ${memberID}`,
+          userProfile: docSnap.displayName
+            .split(" ")
+            .map((n) => n[0])
+            .join(""),
+          accNum: savingsDoc.accountNumber,
+          accType: savingsDoc.accountType,
+          savingsStat: savingsDoc.status,
+          currentBal: `₱${Number(savingsDoc.balance).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
+          interestRate: `${savingsDoc.interestRate * 100}.00% interest p.a.`,
+          dateOpened: `Opened: ${savingsDoc.createdAt.toDate().toLocaleDateString()}`,
+          shareCapital: `₱${Number(docSnap.shareCapital).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
+          totalAssets: `₱${Number(savingsDoc.totalAssets).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
+          disbursedAmount: `₱${Number(savingsDoc.disbursedAmount).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
+          parValue: `₱${Number(savingsDoc.ParValue).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
+          dividends: `${savingsDoc.dividends * 100}%`,
+          shares: savingsDoc.numberOfShares,
+          memberSince: formattedDate,
+          savingsBuildUp: `₱${Number(savingsDoc.savingsBuildUp).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
+          capitalBuildUp: `₱${Number(savingsDoc.capitalBuildUp).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
+        };
 
-                document.querySelectorAll("[data-field]").forEach(el => {
-                    const field = el.dataset.field
-                    el.textContent = userData[field]
-                })
-                hideSpinner();
-                /*document.getElementById("name").textContent = docSnap.displayName
+        document.querySelectorAll("[data-field]").forEach((el) => {
+          const field = el.dataset.field;
+          el.textContent = userData[field];
+        });
+        hideSpinner();
+        /*document.getElementById("name").textContent = docSnap.displayName
                 document.getElementById("userID").textContent = `ID: ${memberID}`
                 document.getElementById("userProfile").innerHTML = docSnap.displayName.split(' ').map(n => n[0]).join('')
                 document.getElementById("accNum").textContent = savingsDoc.accountNumber
@@ -188,9 +192,11 @@ export function initSavingsOverview() {
                 document.getElementById("memberSince").textContent = formattedDate
                 document.getElementById("savingsBuildUp").textContent = `₱${Number(loanDoc.savingsBuildUp).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
                 document.getElementById("capitalBuildUp").textContent = `₱${Number(loanDoc.capitalBuildUp).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`*/
-            } catch (err) {
-                console.log(err)
-            }
-        }
-    })
+      } catch (err) {
+        console.error(err);
+        hideSpinner();
+        showError("Your savings couldn't be loaded. Check your connection and try again.");
+      }
+    }
+  });
 }

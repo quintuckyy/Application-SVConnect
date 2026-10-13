@@ -1,5 +1,5 @@
 export function AboutSVFMPC() {
-    return`
+  return `
         <nav class="bg-gradient-to-r from-green-800 to-emerald-700 shadow-md sticky top-0 z-10">
         <div class="h-16 px-3 flex items-center justify-between">
         <button onclick="location.hash='#/home'"
@@ -106,5 +106,5 @@ export function AboutSVFMPC() {
 
         </div>
     </div>
-    `
+    `;
 }

@@ -1,10 +1,11 @@
 import { auth } from "../services/firebase.js";
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { getMemberID, getMemberRef, formatDate, showSpinner, hideSpinner, showSuccess } from "../services/firebaseFunctions.js";
-
+import { whenSignedIn } from "../services/session.js";
+import { signOut } from "firebase/auth";
+import { getMemberID, getMemberRef, formatDate } from "../services/firebaseFunctions.js";
+import { showSpinner, hideSpinner, showSuccess, showError } from "../services/ui.js";
 
 export function Profile() {
-    return`
+  return `
         <div class="rounded-b-2xl bg-gradient-to-r from-green-800 to-emerald-700 text-white px-6 py-8 shadow-lg">
         <div class="max-w-4xl mx-auto">
             <div class="flex items-center mb-6">
@@ -146,57 +147,59 @@ export function Profile() {
         </button>
     </div>
     <div class="h-16"></div>
-    `
+    `;
 }
 
 export function initProfileDashboard() {
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            try{
-                showSpinner();
-                const memberID = await getMemberID(user);
-                const docSnap = await getMemberRef(memberID);
-                const membershipDate = docSnap.createdAt
-                const formattedDate = membershipDate.toDate().toLocaleDateString("en-US", {
-                    month: "short",
-                    year: "numeric"
-                })
-                
-                const userData = {
-                    userName: docSnap.displayName,
-                    address: docSnap.address,
-                    mobile: docSnap.contact,
-                    email: docSnap.email,
-                    memberSince: `Member Since ${formattedDate}`,
-                    memberID: memberID,
-                    birthday: formatDate(docSnap.birthDate),
-                    sex: docSnap.sex
-                }
-                hideSpinner();
-                document.querySelectorAll("[data-field]").forEach(el => {
-                    const field = el.dataset.field
-                    el.textContent = userData[field]
-                })
-                const logoutBtn = document.getElementById('logoutBtn')
-                logoutBtn.addEventListener("click", async (e) => {
-                    e.preventDefault()
-                    await logout()
-                })
-            } catch (err) {
-                console.log(err)
-            }
-        }
-    })
+  whenSignedIn(async (user) => {
+    if (user) {
+      try {
+        showSpinner();
+        const memberID = await getMemberID(user);
+        const docSnap = await getMemberRef(memberID);
+        const membershipDate = docSnap.createdAt;
+        const formattedDate = membershipDate.toDate().toLocaleDateString("en-US", {
+          month: "short",
+          year: "numeric",
+        });
+
+        const userData = {
+          userName: docSnap.displayName,
+          address: docSnap.address,
+          mobile: docSnap.contact,
+          email: docSnap.email,
+          memberSince: `Member Since ${formattedDate}`,
+          memberID: memberID,
+          birthday: formatDate(docSnap.birthDate),
+          sex: docSnap.sex,
+        };
+        hideSpinner();
+        document.querySelectorAll("[data-field]").forEach((el) => {
+          const field = el.dataset.field;
+          el.textContent = userData[field];
+        });
+        const logoutBtn = document.getElementById("logoutBtn");
+        logoutBtn.addEventListener("click", async (e) => {
+          e.preventDefault();
+          await logout();
+        });
+      } catch (err) {
+        console.error(err);
+        hideSpinner();
+        showError("Your profile couldn't be loaded. Check your connection and try again.");
+      }
+    }
+  });
 }
 
 async function logout() {
-    try {
-        await signOut(auth);
-        showSuccess("You’ve been logged out.")
-        setTimeout(() => {
-            window.location.href = "index.html";
-        }, 2000); 
-    } catch (error) {
-        console.error(error);
-    }
+  try {
+    await signOut(auth);
+    showSuccess("You’ve been logged out.");
+    setTimeout(() => {
+      window.location.href = "index.html";
+    }, 2000);
+  } catch (error) {
+    console.error(error);
+  }
 }
