@@ -225,4 +225,4 @@ Completed as a capstone project and approved by St. Vincent Cooperative manageme
 
 SVConnect was built as a capstone project by **Quinn Agas** and **Neil Patrick Atienza** for St. Vincent Ferrer Multi-Purpose Cooperative.
 
-This repository is Quinn Agas's continuation of that project. The original application was imported in the first commit; the changes since then (the Vite build, Cloud Functions and Security Rules, the test suites and CI) are listed in the commit history.
+This repository is my continuation of the project. The original application was imported in the first commit; the changes since then (the Vite build, Cloud Functions and Security Rules, the test suites and CI) are listed in the commit history.
